@@ -9,7 +9,7 @@ import pandapower as pp
 from util import  net_visualize 
 # Create an empty network
 
-def Parameters():
+def Parameters(network_type):
     
     '''
     parameters of transformers and lines in UofT report Tab.35 and Tab.36
@@ -19,7 +19,8 @@ def Parameters():
     net 
 
     '''
-    T_params = {
+    param_dict = {}
+    T_params_urban = {
         "T1": {
             "sn_mva": 50,
             "vn_hv_kv": 120,
@@ -74,7 +75,7 @@ def Parameters():
             "i0_percent": 0.1,
             "shift_degree": 0
         }      }
-    L_params = {
+    L_params_urban = {
     "Mfd": {
         "c_nf_per_km": 0,  # Assuming negligible capacitance
         "r_ohm_per_km": 0.07,
@@ -97,7 +98,103 @@ def Parameters():
         "type": "cs"  # underground
     }
     }
-    return T_params, L_params
+    param_dict['urban'] = (T_params_urban, L_params_urban)
+
+    #adding the suburban parameters 
+    T_params_suburban = {
+        "T1": {
+            "sn_mva": 100,
+            "vn_hv_kv": 240,
+            "vn_lv_kv": 25,
+            "vk_percent": 10,
+            "vkr_percent": .5,
+            "pfe_kw": 1,
+            "i0_percent": 0.1,
+            "shift_degree": 30,
+            "vector_group": "YGyg"
+        },
+        #residential underground 
+        "T2": {
+            # "sn_mva": 0.1,
+            "sn_mva":0.1,
+            "vn_hv_kv": 25,
+            "vn_lv_kv": 0.208,
+            "vk_percent": 4,
+            "vkr_percent": 1,
+            "pfe_kw": .002,
+            "i0_percent": 0.1,
+            "shift_degree": 0,
+            "vector_group": "Dyg"
+        },
+        #residential overhead
+        "T3": {
+            "sn_mva": 0.1,
+            "vn_hv_kv": 25,
+            "vn_lv_kv": 0.208,
+            "vk_percent": 4,
+            "vkr_percent": 1,
+            "pfe_kw": .002,
+            "i0_percent": 0.1,
+            "shift_degree": 0,
+            "vector_group": "Dyg"
+        },
+        #industrial
+        "T4": {
+            "sn_mva": 1,
+            "vn_hv_kv": 25,
+            "vn_lv_kv": 0.208,
+            "vk_percent": 3,
+            "vkr_percent": 1.5,
+            "pfe_kw": .01,
+            "i0_percent": 0.1,
+            "shift_degree": 0
+        },
+        #commercial
+        "T5": {
+            "sn_mva": 1,
+            "vn_hv_kv": 25,
+            "vn_lv_kv": 0.208,
+            "vk_percent": 3,
+            "vkr_percent": 1.5,
+            "pfe_kw": 0.01,
+            "i0_percent": 0.1,
+            "shift_degree": 0
+        }      }
+    
+    L_params_suburban = {
+    "Mfd": {
+        "c_nf_per_km": 0,  # Assuming negligible capacitance
+        "r_ohm_per_km": 0.128,
+        "x_ohm_per_km": 0.114,
+        "max_i_ka": 0.4,
+        "type": "ol"  # Overhead line
+    },
+    "Lat": {
+        "c_nf_per_km": 0,  # Assuming negligible capacitance
+        "r_ohm_per_km": 0.6,
+        "x_ohm_per_km": 0.38,
+        "max_i_ka": 0.12,
+        "type": "ol"  # Overhead line
+    },
+    "Lat_UG": {
+        "c_nf_per_km": 0,  # Assuming negligible capacitance
+        "r_ohm_per_km": 0.6,
+        "x_ohm_per_km": 0.38,
+        "max_i_ka": 0.12,
+        "type": "cs"  # underground
+    },
+    "Fegr" : {
+        "c_nf_per_km": 0,  # Assuming negligible capacitance
+        "r_ohm_per_km": 0.08,
+        "x_ohm_per_km": 0.06,
+        "max_i_ka": 0.4,
+        "type": "cs"  # underground 
+    }
+    }
+    param_dict['suburban'] = (T_params_suburban, L_params_suburban)
+
+
+    return param_dict[network_type][0], param_dict[network_type][1]
 
 
 
@@ -290,3 +387,21 @@ def build_net_2():
     return net
 
 
+def build_net_suburban():
+    '''
+    Building the suburban network
+    '''
+    net = pp.create_empty_network()
+    #create the buses
+    bus_hv = pp.create_bus(net, vn_kv=110, name="HV")
+    
+    #substation network 1
+    bus_lv_1 = pp.create_bus(net, vn_kv=12.5, name='Substation')
+    pp.create_shunt(net, bus=bus_lv_1, q_mvar=10, name="Capacitor Bank")
+    
+
+
+
+    pp.create_transformer(net, bus1, bus2, std_type="100 MVA 110/20 kV", name="T1")
+
+    pp.create_line(net, bus2, bus3, length_km=10, std_type="149-AL1/24-ST1A 20.0", name="L1")
