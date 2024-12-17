@@ -211,7 +211,7 @@ def build_net():
     net = pp.create_empty_network()
     
     
-    T_params, L_params = Parameters()
+    T_params, L_params = Parameters('urban')
     for key, params in T_params.items():
         pp.create_std_type(net, params, name=f"{key}", element="trafo")
     
@@ -305,7 +305,7 @@ def build_net_2():
     net = pp.create_empty_network()
     
     
-    T_params, L_params = Parameters()
+    T_params, L_params = Parameters('urban')
     for key, params in T_params.items():
         pp.create_std_type(net, params, name=f"{key}", element="trafo")
     
@@ -387,21 +387,96 @@ def build_net_2():
     return net
 
 
-def build_net_suburban():
+def build_net_suburban(feeder_lines=1, res_units=3):
     '''
     Building the suburban network
     '''
     net = pp.create_empty_network()
+
+    #fetch parameters
+    T_params, L_params = Parameters('suburban')
+    for key, params in T_params.items():
+        pp.create_std_type(net, params, name=f"{key}", element="trafo")
+    
+    for key, params in L_params.items():
+        pp.create_std_type(net, params, name=f"{key}", element="line")
+    
     #create the buses
-    bus_hv = pp.create_bus(net, vn_kv=110, name="HV")
-    
+    bus_hv = pp.create_bus(net, vn_kv=120, name="HV")
+    bus_lv_1 = pp.create_bus(net, vn_kv=25, name='Subst')
+
     #substation network 1
-    bus_lv_1 = pp.create_bus(net, vn_kv=12.5, name='Substation')
-    pp.create_shunt(net, bus=bus_lv_1, q_mvar=10, name="Capacitor Bank")
+    pp.create_transformer(net, hv_bus= bus_hv, lv_bus=bus_lv_1 , std_type="T1", name='T1')
+    pp.create_ext_grid(net, bus=bus_hv, vm_pu=1.0, name='')
+    pp.create_shunt(net, bus=bus_lv_1, q_mvar=20, name="Capacitor Bank")
+    
+
+    line_counter = 1
+    for i in range(feeder_lines):
+        #crete the buses
+        bus_names = [f'ext_bus_{i}', 
+                     f'res_ug_bus_{i}', 
+                     f'res_oh_bus_{i}',
+                     f'indst_bus{i}', 
+                     f'comm_bus_{i}']
+        
+        buses_feeder = pp.create_buses(net, nr_buses = 5,vn_kv = 24.9,name=bus_names)
+                                       # name = ["Comm_in","Public_in", "Res_in1","Res_in2"])
+        
+        
+        pp.create_line(net, 
+                      from_bus=bus_lv_1, 
+                      to_bus=buses_feeder[0], 
+                      length_km=1, 
+                      std_type="Fegr",
+                      name='L1')
+        backbone_line_names = ['L4', 'L12', 'L20', 'L21']
+        pp.create_lines(net, 
+                        buses_feeder[:-1], 
+                        buses_feeder[1:],
+                        length_km = [5,5,5,5], 
+                        std_type='Mfd',
+                        names=backbone_line_names)
+        
+        #residential underground
+        res_num = res_units
+        res_feeder_backbone = buses_feeder[1]
+        for res_sub_feeder in range(3):
+            res1_feed = pp.create_buses(net,res_num , 24.9, name='')
+            res1_house = pp.create_buses(net,res_num , 0.208, name='', zone = 'Res UG')
+            pp.create_lines(net, np.insert( res1_feed[:-1], 0 , res_feeder_backbone ),res1_feed ,
+                            length_km =  [1 for _ in range(res_num )], std_type='Lat_UG')
+            
+            for _ in range(res_num ): 
+                pp.create_transformer( net, res1_feed[_], res1_house[_],
+                                      std_type='T2',name ='T2')
+        #residential overhead
+        res_num = res_units
+        res_feeder_backbone = buses_feeder[2]
+        for res_sub_feeder in range(3):
+            res1_feed = pp.create_buses(net,res_num , 24.9, name='')
+            res1_house = pp.create_buses(net,res_num , 0.208, name='', zone = 'Res')
+            pp.create_lines(net, np.insert( res1_feed[:-1], 0 , res_feeder_backbone ),res1_feed ,
+                            length_km =  [1 for _ in range(res_num )], std_type='Lat')
+            
+            for _ in range(res_num ): 
+                pp.create_transformer( net, res1_feed[_], res1_house[_],
+                                      std_type='T3',name ='T3')
+        
+        #industrial 
+        indst_feeder_backbone = buses_feeder[3]
+        indst_feeder = pp.create_bus(net, 0.208, name='Indst', zone='Indst')
+        pp.create_transformer(net, indst_feeder_backbone, indst_feeder, std_type='T4', name='T4')
+        net.bus_geodata['y'] ,net.bus_geodata['x']  = -net.bus_geodata['x'] , -net.bus_geodata['y'] 
+
+        
+        #commercial 
+        comm_feeder_backbone = buses_feeder[4]
+        comm_feeder = pp.create_bus(net, 0.208, name='Comm', zone='Comm')
+        pp.create_transformer(net, comm_feeder_backbone, comm_feeder, std_type='T5', name='T5')
     
 
 
+    return net
 
-    pp.create_transformer(net, bus1, bus2, std_type="100 MVA 110/20 kV", name="T1")
-
-    pp.create_line(net, bus2, bus3, length_km=10, std_type="149-AL1/24-ST1A 20.0", name="L1")
+    
