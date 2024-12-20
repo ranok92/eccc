@@ -17,7 +17,7 @@ def net_visualize(net_ ):
         
         x, y = net.bus_geodata.loc[bus_idx, ['x', 'y']]
         ax.text(
-            x  , y  ,  '{}'.format(net.bus.name[bus_idx])  ,  fontsize=15,ha="right", va="top"
+            x  , y  ,  '{}'.format(net.bus.name[bus_idx])  ,  fontsize=8,ha="right", va="top"
         )
         # ax.text(
         #     x , y  ,  'Bus{}\n{}'.format(bus_idx,net.bus.name[bus_idx])  ,  fontsize=15,ha="left", va="top"
@@ -37,6 +37,25 @@ def net_visualize(net_ ):
         ax.text(
             x_mid, y_mid, f"{net.trafo.name[idx]}",  # Transformer number
             color="black", fontsize=15, ha="left", va="top"
+        )
+        # ax.text(
+        #     x_mid, y_mid, f"T{idx}",  # Transformer number
+        #     color="black", fontsize=15, ha="left", va="top"
+        # )
+    
+     # Annotate each line with its number
+    for idx, line in net.line.iterrows() :
+        # Use the locations of the 'hv_bus' and 'lv_bus' to position the transformer text 
+        
+        from_bus_coord = net.bus_geodata.loc[line.from_bus]
+        to_bus_coord = net.bus_geodata.loc[line.to_bus]
+        print(from_bus_coord)
+        # Position the text between the high-voltage and low-voltage buses
+        x_mid = (from_bus_coord['x'] + to_bus_coord['x']) / 2
+        y_mid = (from_bus_coord['y'] + to_bus_coord['y']) / 2
+        ax.text(
+            x_mid+0.15, y_mid+0.12, f"{net.line.name[idx]}",  # Transformer number
+            color="black", fontsize=8, ha="right", va="bottom"
         )
         # ax.text(
         #     x_mid, y_mid, f"T{idx}",  # Transformer number
