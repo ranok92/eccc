@@ -6,6 +6,14 @@ import pandapower
 import pandapower.plotting as plotting
 import matplotlib.pyplot as plt
 
+
+
+
+
+def get_bus_index_by_name(net, name):
+    return net.bus[net.bus["name"] == name].index[0]
+
+
 def net_visualize(net_ ):
     net= net_
     ax=plotting.simple_plot(net,   plot_gens=True, line_width=2, bus_size=1, show_plot=False , gen_size=2.5)
@@ -17,7 +25,7 @@ def net_visualize(net_ ):
         
         x, y = net.bus_geodata.loc[bus_idx, ['x', 'y']]
         ax.text(
-            x  , y  ,  '{}'.format(net.bus.name[bus_idx])  ,  fontsize=8,ha="right", va="top"
+            x+0.2  , y-0.15  ,  '{}'.format(net.bus.name[bus_idx])  ,  fontsize=8,ha="right", va="top"
         )
         # ax.text(
         #     x , y  ,  'Bus{}\n{}'.format(bus_idx,net.bus.name[bus_idx])  ,  fontsize=15,ha="left", va="top"
@@ -35,7 +43,7 @@ def net_visualize(net_ ):
         x_mid = (x_hv + x_lv) / 2
         y_mid = (y_hv + y_lv) / 2
         ax.text(
-            x_mid, y_mid, f"{net.trafo.name[idx]}",  # Transformer number
+            x_mid-0.2, y_mid-0.3, f"{net.trafo.name[idx]}",  # Transformer number
             color="black", fontsize=15, ha="left", va="top"
         )
         # ax.text(
@@ -49,7 +57,6 @@ def net_visualize(net_ ):
         
         from_bus_coord = net.bus_geodata.loc[line.from_bus]
         to_bus_coord = net.bus_geodata.loc[line.to_bus]
-        print(from_bus_coord)
         # Position the text between the high-voltage and low-voltage buses
         x_mid = (from_bus_coord['x'] + to_bus_coord['x']) / 2
         y_mid = (from_bus_coord['y'] + to_bus_coord['y']) / 2
