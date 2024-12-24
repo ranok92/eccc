@@ -6,7 +6,7 @@ Created on Tue Dec 10 11:05:27 2024
 """
 import numpy as np
 import pandapower as pp
-from util import  net_visualize 
+from util import  net_visualize, get_bus_index_by_name
 # Create an empty network
 
 def Parameters(network_type):
@@ -204,7 +204,7 @@ def Parameters(network_type):
             "shift_degree": 30,
             "vector_group": "Dyg"
         },
-        #residential underground 
+
         "T1": {
             "sn_mva":3.6,
             "vn_hv_kv": 27.6,
@@ -216,7 +216,7 @@ def Parameters(network_type):
             "shift_degree": 0,
             "vector_group": "Dy"
         },
-        #residential overhead
+
         "T2": {
             "sn_mva": 15,
             "vn_hv_kv": 27.6,
@@ -228,7 +228,7 @@ def Parameters(network_type):
             "shift_degree": 0,
             "vector_group": "Yy"
         },
-        #industrial
+
         "T3": {
             "sn_mva": 1,
             "vn_hv_kv": 27.6,
@@ -241,7 +241,7 @@ def Parameters(network_type):
             "vector_group": "Yy"
 
         },
-        #commercial
+
         "T4": {
             "sn_mva": 3.6,
             "vn_hv_kv": 27.6,
@@ -608,7 +608,7 @@ def build_net_rural():
                      ["336AL427"]* 3
     #create the buses
     bus_hv = pp.create_bus(net, vn_kv=100, name="HV")
-    bus_lv_1 = pp.create_bus(net, vn_kv=27.6, name='Subst')
+    bus_lv_1 = pp.create_bus(net, vn_kv=27.6, name='LV')
 
     #substation network 1
     substation_trafo = pp.create_transformer(net, 
@@ -625,16 +625,14 @@ def build_net_rural():
 
     #create the buses
     num_buses_part1 = 13
-    bus_names_part1 = [ f'bus_{i}' for i in range(num_buses_part1)]
+    bus_names_part1 = [ f'bus_{i}' for i in range(1, num_buses_part1+1)]
     buses_part1 = pp.create_buses(net, 
                                   nr_buses=num_buses_part1,
                                   vn_kv = 27.6,
                                   name=bus_names_part1)
                                        # name = ["Comm_in","Public_in", "Res_in1","Res_in2"])
     #connect the lines
-    num_lines_part1 = 13
-
-    buses_part1_w_subs_trafo = np.insert(buses_part1, 0, substation_trafo)
+    buses_part1_w_subs_trafo = np.insert(buses_part1, 0, bus_lv_1)
     for i in range(4):
         pp.create_line(net,
                     from_bus=buses_part1_w_subs_trafo[i*3], 
@@ -662,7 +660,8 @@ def build_net_rural():
                     std_type="336AL427",
                     name=f'L13')
 
-    #create the second line of buses
+    #create the second line of buses starting from the 
+    #right of T2 till the end in a straight line
     num_buses_part2 = 9
     bus_names_part2 = [f'bus_{i}' for i in range(14, 23)]
     buses_part2 = pp.create_buses(net, 
@@ -673,15 +672,15 @@ def build_net_rural():
     t2 = pp.create_transformer(net,  
                             hv_bus=buses_part1_w_subs_trafo[-1], 
                             lv_bus=buses_part2[0], 
-                            std_type="main_substation", 
-                            name='Substation')
+                            std_type="T2", 
+                            name='T2')
     line_names_part2 = [14, 15, 16, 19, 20, 22, 26, 29]
     for l in range(len(line_names_part2)):
         pp.create_line(net, 
                        from_bus=buses_part2[l],
                        to_bus=buses_part2[l+1],
-                       length_km=line_lengths[line_names_part2[i]-1],
-                       std_type=line_std_types[line_names_part2[i]-1], 
+                       length_km=line_lengths[line_names_part2[l]-1],
+                       std_type=line_std_types[line_names_part2[l]-1], 
                        name=f'L{line_names_part2[l]}')
         
     #create branch starting from bus after line 19
@@ -693,19 +692,108 @@ def build_net_rural():
                                   name=bus_names_part3) 
     line_names_part3 = [30, 31, 33, 35, 36, 37, 38]
     pp.create_line(net, 
-                    from_bus=buses_part3[l],
-                    to_bus=buses_part3[l+1],
-                    length_km=line_lengths[line_names_part3[i]-1],
-                    std_type=line_std_types[line_names_part2[i]-1], 
-                    name=f'L{line_names_part3[l]}')
-    for l in range(len(line_names_part3)):
+                    from_bus=buses_part2[4],
+                    to_bus=buses_part3[0],
+                    length_km=line_lengths[line_names_part3[0]],
+                    std_type=line_std_types[line_names_part3[0]], 
+                    name=f'L{line_names_part3[0]}')
+    for l in range(1, len(line_names_part3)):
         pp.create_line(net, 
-                       from_bus=buses_part3[l],
-                       to_bus=buses_part3[l+1],
-                       length_km=line_lengths[line_names_part3[i]-1],
-                       std_type=line_std_types[line_names_part2[i]-1], 
+                       from_bus=buses_part3[l-1],
+                       to_bus=buses_part3[l],
+                       length_km=line_lengths[line_names_part3[l]-1],
+                       std_type=line_std_types[line_names_part3[l]-1], 
                        name=f'L{line_names_part3[l]}')
-        
+    
+    #add all the smaller branches
+
+    # bus_3 -> M1, M2, M3 
+
+    # bus_6 -> T1
+    bus_30 = pp.create_bus(net, vn_kv=8.3, name='bus_30')
+    t1 = pp.create_transformer(net,  
+                            hv_bus=get_bus_index_by_name(net, 'bus_6'), 
+                            lv_bus=bus_30, 
+                            std_type="T1", 
+                            name='T1')
+
+
+    # bus_5 -> M4, M5 
+
+    # bus_8 -> M7
+
+    # bus_11 -> M8
+    
+    # bus_12 -> M9-M12
+
+    # bus_17 -> T3 
+    bus_31 = pp.create_bus(net, vn_kv=27.6, name='bus_31')
+    bus_32 = pp.create_bus(net, vn_kv=8.3, name='bus_32')
+
+    line_names_part4 = [17, 18]
+    t3 = pp.create_transformer(net,  
+                            hv_bus=bus_31, 
+                            lv_bus=bus_32, 
+                            std_type="T3", 
+                            name='T3')
+    pp.create_line(net, 
+                   from_bus=get_bus_index_by_name(net, 'bus_17'),
+                   to_bus=bus_31, 
+                   length_km=line_lengths[line_names_part4[0]-1],
+                   std_type=line_std_types[line_names_part4[0]-1], 
+                   name=f'L{line_names_part4[0]}')
+  
+    
+
+    # bus_18 -> M26 
+
+    # bus_19 -> L21 
+    line_names_part5 = [21]
+    bus_33 = pp.create_bus(net, vn_kv=27.6, name='bus_33')
+    pp.create_line(net, 
+                   from_bus=get_bus_index_by_name(net, 'bus_19'),
+                   to_bus=bus_33, 
+                   length_km=line_lengths[line_names_part5[0]-1],
+                   std_type=line_std_types[line_names_part5[0]-1], 
+                   name=f'L{line_names_part5[0]}')
+  
+    # bus_20 -> L23 
+    line_names_part6 = [23, 24, 25]
+    bus_34 = pp.create_bus(net, vn_kv=27.6, name='bus_34')
+    bus_35 = pp.create_bus(net, vn_kv=27.6, name='bus_35')
+    bus_36 = pp.create_bus(net, vn_kv=27.6, name='bus_36')
+    pp.create_line(net, 
+                   from_bus=get_bus_index_by_name(net, 'bus_20'),
+                   to_bus=bus_34, 
+                   length_km=line_lengths[line_names_part6[0]-1],
+                   std_type=line_std_types[line_names_part6[0]-1], 
+                   name=f'L{line_names_part6[0]}')
+    pp.create_line(net, 
+                from_bus=bus_34,
+                to_bus=bus_35, 
+                length_km=line_lengths[line_names_part6[1]-1],
+                std_type=line_std_types[line_names_part6[1]-1], 
+                name=f'L{line_names_part6[1]}')
+    pp.create_line(net, 
+                from_bus=bus_34,
+                to_bus=bus_36, 
+                length_km=line_lengths[line_names_part6[2]-1],
+                std_type=line_std_types[line_names_part6[2]-1], 
+                name=f'L{line_names_part6[2]}')
+
+
+
+    # bus_21 -> L26 
+
+    # bus_22 -> M17-M20 
+
+    # bus_24 -> L32 
+
+    # bus_25 -> L34 
+
+    # bus_26 -> M22, M23
+
+    # bus_29 -> T4
 
 
     return net
