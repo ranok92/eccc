@@ -30,11 +30,11 @@ based on penetration rate
 
 
 
-EV_load0 = pd.read_excel('..\EV_profile_gen/EV_load_profiles_gen.xlsx')
+EV_load0 = pd.read_excel('./data/EV_load_profiles_gen.xlsx')
 # load profile of one charger; each charger assumed to serve one ev per day
 
 
-penetrationRate = pd.read_excel('../EV_profile_gen/penetrationRate.xlsx').set_index('year' )
+penetrationRate = pd.read_excel('./data/penetrationRate.xlsx').set_index('year' )
 
 
 net0 = build_net_2()
@@ -101,7 +101,7 @@ for year in range(2015, 2055,5):
     
     output_table =  loading_assess(net, bus_load ,ev_load )
     
-    folder = './ResultsJan2/'
+    folder = './results/ResultsJan2/'
     os.makedirs(os.path.dirname(folder), exist_ok=True)
     output_table.to_excel('{}withEV{}.xlsx'.format(folder, year))
     

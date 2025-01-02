@@ -13,16 +13,16 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import os
 
-def loading_assess( bus_load, EV_load=None):
+def loading_assess(net ,  bus_load, EV_load=None):
     
 
     # net = build_net  ()
-    net = build_net_2  ()
+    # net = build_net_2  ()
     # net_visualize(net )
     # 
     #%%
     
-    dt = pd.read_excel('nonEV_norm.xlsx')
+    dt = pd.read_excel('./data/nonEV_norm.xlsx')
     
     load_dt = {}
     
