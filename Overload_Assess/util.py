@@ -10,6 +10,17 @@ import matplotlib.pyplot as plt
 
 
 
+def calc_active_reactive_power_for_load(s_array, pf=0.95):
+    '''
+    s_array: an array of apparent power (s,sa,sb,sc)
+    pf: lagging factor
+    '''
+    total_active_power = np.sum(s_array*pf)
+    total_reactive_power = np.sqrt(np.power(s_array, 2)- np.power(s_array*pf, 2)).sum()
+    return total_active_power, total_reactive_power
+    
+
+
 def get_bus_index_by_name(net, name):
     return net.bus[net.bus["name"] == name].index[0]
 
