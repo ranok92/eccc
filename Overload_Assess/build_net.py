@@ -480,7 +480,7 @@ def build_net_2():
     return net
 
 
-def build_net_suburban(feeder_lines=1, res_num=3):
+def build_net_suburban(feeder_lines=6, res_num=7):
     '''
     Building the suburban network
     '''
@@ -520,7 +520,7 @@ def build_net_suburban(feeder_lines=1, res_num=3):
                         name='L1')
             backbone_line_names = ['L4', 'L12', 'L20', 'L21']
 
-            for j in range(3): #for lines L2, L3 and L4 originating from ext_bus_{i}
+            for j in range(2): #for lines L2, L3 and L4 originating from ext_bus_{i}
                 bus_names = [
                                 f'res_ug_bus_{i}_{j}', 
                                 f'res_oh_bus_{i}_{j}',
@@ -542,7 +542,7 @@ def build_net_suburban(feeder_lines=1, res_num=3):
                 res_feeder_backbone = buses_feeder[1]
                 for _ in range(3): # three lines for underground residence
                     res1_feed = pp.create_buses(net,res_num , 24.9, name='')
-                    res1_house = pp.create_buses(net,res_num , 0.208, name='', zone = 'Res UG')
+                    res1_house = pp.create_buses(net,res_num , 0.208, name='', zone = 'Res')
                     pp.create_lines(net, np.insert( res1_feed[:-1], 0 , res_feeder_backbone ),res1_feed ,
                                     length_km =  [1 for _ in range(res_num )], std_type='Lat_UG')
                     
