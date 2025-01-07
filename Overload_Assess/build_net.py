@@ -124,7 +124,6 @@ def Parameters(network_type):
             "pfe_kw": .2,
             "i0_percent": 0.1,
             "shift_degree": 0,
-            "vector_group": "Dyg"
         },
         #residential overhead
         "T3": {
@@ -136,7 +135,6 @@ def Parameters(network_type):
             "pfe_kw": .2,
             "i0_percent": 0.1,
             "shift_degree": 0,
-            "vector_group": "Dyg"
         },
         #industrial
         "T4": {
@@ -147,7 +145,9 @@ def Parameters(network_type):
             "vkr_percent": 1.5,
             "pfe_kw": 5,
             "i0_percent": 0.1,
-            "shift_degree": 0
+            "shift_degree": 0,
+            "vector_group": "Dyg"
+
         },
         #commercial
         "T5": {
@@ -158,7 +158,9 @@ def Parameters(network_type):
             "vkr_percent": 1.5,
             "pfe_kw": 5,
             "i0_percent": 0.1,
-            "shift_degree": 0
+            "shift_degree": 0,
+            "vector_group": "Dyg"
+
         }      }
     
     L_params_suburban = {
@@ -185,13 +187,14 @@ def Parameters(network_type):
     },
     "Fegr" : {
         "c_nf_per_km": 0,  # Assuming negligible capacitance
-        "r_ohm_per_km": 0.08,
-        "x_ohm_per_km": 0.06,
+        "r_ohm_per_km": 0.06,
+        "x_ohm_per_km": 0.08,
         "max_i_ka": 0.4,
         "type": "cs"  # underground 
     }
     }
     param_dict['suburban'] = (T_params_suburban, L_params_suburban)
+
     T_params_rural = {
         "main_substation": {
             "sn_mva": 20,
@@ -495,11 +498,11 @@ def build_net_suburban(feeder_lines=6, res_num=7):
         pp.create_std_type(net, params, name=f"{key}", element="line")
     
     #create the buses
-    bus_hv = pp.create_bus(net, vn_kv=120, name="HV")
+    bus_hv = pp.create_bus(net, vn_kv=240, name="HV")
 
     #substation network 1
 
-    for _ in range(2): #two T1 substations
+    for _ in range(1): #two T1 substations
         bus_lv_1 = pp.create_bus(net, vn_kv=25, name='Subst')
         pp.create_transformer(net, hv_bus= bus_hv, lv_bus=bus_lv_1 , std_type="T1", name='T1')
         pp.create_ext_grid(net, bus=bus_hv, vm_pu=1.0, name='')
@@ -520,7 +523,7 @@ def build_net_suburban(feeder_lines=6, res_num=7):
                         name='L1')
             backbone_line_names = ['L4', 'L12', 'L20', 'L21']
 
-            for j in range(2): #for lines L2, L3 and L4 originating from ext_bus_{i}
+            for j in range(3): #for lines L2, L3 and L4 originating from ext_bus_{i}
                 bus_names = [
                                 f'res_ug_bus_{i}_{j}', 
                                 f'res_oh_bus_{i}_{j}',
@@ -862,3 +865,6 @@ def build_net_rural():
 
     return net
     
+if __name__=='__main__':
+    net = build_net_suburban(1,7)
+    net_visualize(net)
