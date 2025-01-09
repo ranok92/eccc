@@ -60,9 +60,18 @@ pop_dist_acc_housing = pd.read_excel("./data/ldev_load_data/population_distribut
 
 #######     xxx    #######
 
+# MDEV load related data 
+
+mhdev_vehicle_numbers = pd.read_csv('./data/mhdev_load_data/mhdev_numbers_across_diff_areas.csv')
+mdev_load_profiles = pd.read_csv('./data/mhdev_load_data/mdev_load_profiles.csv')
+hdev_load_profiles = pd.read_csv('./data/mhdev_load_data/hdev_load_profiles.csv')
+mhdev_chargers_data = pd.read_csv('./data/mhdev_load_data/charger_numbers_across_networks.csv')
+mhdev_charger_throughput = {'public_l3': 1, 'public_fast': 6, 'private_l3': 1, 'private_fast': 3}
+
+#######     xxx    #######
 
 
-area_type = ['suburban']
+area_type = ['urban']
 
 comm_bus_name_by_area = {'urban':'Pub', 'suburban': 'Indst'}
 
@@ -108,6 +117,9 @@ for area in area_type:
 
         net = get_area_network(area)
         print('running the year of {}'.format(year))
+
+        # non EV load 
+
         bus_load = {'Res':  res*k , 'Comm': comm*k, comm_bus_name_by_area[area]: pub*k} #MWh per day
         k*= grow_rate
 
@@ -286,9 +298,91 @@ for area in area_type:
                                                                     ) * \
                                                                       1e-3
 
-                                
+        # MHDEV load 
 
+        # private/commercial 
+        mdevs_for_area_year = mhdev_vehicle_numbers.loc[(mhdev_vehicle_numbers['year']==year) & \
+                                                            (mhdev_vehicle_numbers['area']==area) \
+                                                                ]['mdev'].item()
         
+        hdevs_for_area_year = mhdev_vehicle_numbers.loc[(mhdev_vehicle_numbers['year']==year) & \
+                                                (mhdev_vehicle_numbers['area']==area)
+                                                                ]['hdev'].item()
+
+        total_mhdevs_area_year = mdevs_for_area_year+hdevs_for_area_year
+        mhdev_chargers_nums = mhdev_chargers_data.loc[(mhdev_chargers_data['year']==year) & \
+                                                        (mhdev_chargers_data['area']==area)]
+
+        private_l3_chargers_per_bus = mhdev_chargers_nums['private_l3'].item()/total_comm_bus
+
+        private_fast_chargers_per_bus = mhdev_chargers_nums['private_fast'].item()/total_comm_bus
+
+        # the throughput of each charger is assumed to have M and HDEVs proportional to their numbers 
+        # in the network
+        mdevs_per_private_l3_charger = mhdev_charger_throughput['private_l3']* \
+                                            (mdevs_for_area_year/ total_mhdevs_area_year)
+        
+        hdevs_per_private_l3_charger = mhdev_charger_throughput['private_l3'] - \
+                                                            mdevs_per_private_l3_charger
+        
+
+        mdevs_per_private_fast_charger = mhdev_charger_throughput['private_fast']* \
+                                            (mdevs_for_area_year/total_mhdevs_area_year)
+        
+        hdevs_per_private_fast_charger = mhdev_charger_throughput['private_fast'] - \
+                                                            mdevs_per_private_fast_charger
+
+
+        mhdev_load_commercial_bus =  (mdev_load_profiles['depot_l3']* \
+                                    private_l3_chargers_per_bus* \
+                                        mdevs_per_private_l3_charger) + \
+                                (hdev_load_profiles['depot_l3']*
+                                    private_l3_chargers_per_bus*
+                                        hdevs_per_private_l3_charger) + \
+                                (mdev_load_profiles['opp_fast']* \
+                                    private_fast_chargers_per_bus* \
+                                        mdevs_per_private_l3_charger) + \
+                                (hdev_load_profiles['depot_l3']* \
+                                    private_fast_chargers_per_bus* \
+                                        hdevs_per_private_l3_charger) 
+        
+        ev_load_dict['Comm'] += mhdev_load_commercial_bus
+
+        # public / industrial 
+
+        public_l3_chargers_per_bus = mhdev_chargers_nums['public_l3'].item()/total_public_bus
+
+        public_fast_chargers_per_bus = mhdev_chargers_nums['public_fast'].item()/total_public_bus
+
+        # the throughput of each charger is assumed to have M and HDEVs proportional to their numbers 
+        # in the network
+        mdevs_per_public_l3_charger = mhdev_charger_throughput['public_l3']* \
+                                            (mdevs_for_area_year/total_mhdevs_area_year)
+        
+        hdevs_per_public_l3_charger = mhdev_charger_throughput['public_l3'] - \
+                                                    mdevs_per_public_l3_charger
+        
+
+        mdevs_per_public_fast_charger = mhdev_charger_throughput['public_fast']* \
+                                            (mdevs_for_area_year/total_mhdevs_area_year)
+        
+        hdevs_per_public_fast_charger = mhdev_charger_throughput['public_fast'] -\
+                                                     mdevs_per_public_fast_charger
+
+        mhdev_load_public_bus = (mdev_load_profiles['depot_l3']* \
+                                    public_l3_chargers_per_bus* \
+                                        mdevs_per_public_l3_charger) + \
+                                (hdev_load_profiles['depot_l3']*
+                                    public_l3_chargers_per_bus*
+                                        hdevs_per_public_l3_charger) + \
+                                (mdev_load_profiles['opp_fast']* \
+                                    public_fast_chargers_per_bus* \
+                                        mdevs_per_public_l3_charger) + \
+                                (hdev_load_profiles['depot_l3']* \
+                                    public_fast_chargers_per_bus* \
+                                        hdevs_per_public_l3_charger) 
+
+        ev_load_dict[comm_bus_name_by_area[area]] += mhdev_load_public_bus
         # # table 21: res area AC2 : AC1 = 12:3
         # # assume AC2 serve 0.7 ev per day
         # EV_load['Res'] = (EV_load0['home_AC2'] * 12/15 * .7 +  EV_load0['home_AC1']* 3/15 ) \
@@ -301,7 +395,7 @@ for area in area_type:
         # # tab 21: pub area AC2:DC=9:3
         # EV_load['Pub'] = ( EV_load0['public_AC2'] *9/12 +  EV_load0['public_DC'] * 3/12 ) \
         #     *1e-3 *    charger_per_public_bus
-        
+        ipdb.set_trace()
         for key, value in ev_count_dict.items():
             print(f'{key} : {value}')
         
@@ -312,7 +406,7 @@ for area in area_type:
         print(total_ev_in_pub_charge_from_numbers)
         #ipdb.set_trace()
         output_table_trafo, output_table_line =  loading_assess(net, area, bus_load ,ev_load_dict)
-        folder = f'./results/ResultsJan7_{area}/'
+        folder = f'./results/ResultsJan9_{area}/'
         os.makedirs(os.path.dirname(folder), exist_ok=True)
         output_table_trafo.to_excel('{}withEV{}_tra.xlsx'.format(folder, year))
         output_table_line.to_excel('{}withEV{}_line.xlsx'.format(folder, year))
