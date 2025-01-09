@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import os
 
-def loading_assess(net ,  bus_load, EV_load=None):
+def loading_assess(net, area_type,  bus_load, EV_load=None):
     
 
     # net = build_net  ()
@@ -21,7 +21,8 @@ def loading_assess(net ,  bus_load, EV_load=None):
     # net_visualize(net )
     # 
     #%%
-    
+    pub_bus_name_by_area = {'urban':'Pub', 'suburban': 'Indst'}
+
     dt = pd.read_excel('./data/nonEV_norm.xlsx')
     
     load_dt = {}
@@ -46,13 +47,17 @@ def loading_assess(net ,  bus_load, EV_load=None):
     
     
     #  public load
-    E_pub_perday = bus_load['Pub']
+    E_pub_perday = bus_load[pub_bus_name_by_area[area_type]]
     # 6.8  # unit: mwh
-    load_pub_per_bus = dt ['street']   * E_pub_perday
-    idx = net.bus.index[ net.bus['zone'] =='Pub']
-    load_dt['Pub'] = {'load':load_pub_per_bus, 'bus':idx}
+    if area_type=='suburban':
+        load_pub_per_bus = dt ['industrial']   * E_pub_perday
+    if area_type=='urban':
+        load_pub_per_bus = dt ['street']   * E_pub_perday
+
+    idx = net.bus.index[ net.bus['zone'] ==pub_bus_name_by_area[area_type]]
+    load_dt[pub_bus_name_by_area[area_type]] = {'load':load_pub_per_bus, 'bus':idx}
     
-    
+
     if EV_load is not None:
         for area , ev in EV_load.items():
             load_dt[area]['load'] +=  ev 
@@ -60,10 +65,17 @@ def loading_assess(net ,  bus_load, EV_load=None):
     #  
     time_stamp = dt['time']
     
-    output_table = pd.DataFrame()   
-    output_table['T_type'] = net.trafo['name']
-    output_table[ 'sn_mva']=  net.trafo['sn_mva']
+    #results for transformers 
+    output_table_trafo = pd.DataFrame()   
+    output_table_trafo['T_type'] = net.trafo['name']
+    output_table_trafo[ 'sn_mva']=  net.trafo['sn_mva']
     
+    #results for lines 
+    output_table_line = pd.DataFrame() 
+    output_table_line['std_type'] = net.line['std_type']
+    output_table_line['length_km'] = net.line['length_km']
+    output_table_line['max_i_ka'] = net.line['max_i_ka']
+
     for t in time_stamp[:]:
         # add_load(net, load_dt)
         for area , dt_ in load_dt.items():
@@ -72,18 +84,33 @@ def loading_assess(net ,  bus_load, EV_load=None):
                 load_name = '{} load'.format(area)
                 pp.create_load(net,bus_temp ,
                                 p_mw = load_, name= load_name)
+            
                 
-        pp.runpp(net)
+        # debug
+        # total_load_calc = load_dt['Res']['load'].iloc[t]*len(load_dt['Res']['bus']) + \
+        #                         load_dt['Comm']['load'].iloc[t]*len(load_dt['Comm']['bus']) + \
+        #                             load_dt[pub_bus_name_by_area[area_type]]['load'].iloc[t]*len(load_dt[pub_bus_name_by_area[area_type]]['bus'])
+        # print("total load cacl :", total_load_calc)
+        #
+        # total_load = net.load.p_mw.sum()
+        # total_generation = net.sgen.p_mw.sum() 
+        # print(f"Iteration {t}: Total Load = {total_load}, Total Generation = {total_generation}")
+
+        #######
+
+        try:
+            pp.runpp(net, algorithm='iwamoto_nr',enforce_q_lims=True,  max_iteration=50, tolerance_mva=1e-4,  debug=True)
+        except:
+            print(f"Power flow failed at iteration {t}. Checking network...")
+            print(net.res_bus[['vm_pu']])  # Check bus voltages
+            #print(net.res_line[['loading_percent']])  # Check line loadings
         time_stamp_key = '{}'.format(t)
-        output_table[time_stamp_key ] = net.res_trafo['loading_percent']
-    
+        output_table_trafo[time_stamp_key] = net.res_trafo['loading_percent']
+        output_table_line[time_stamp_key] = net.res_line['loading_percent']
+
         net.load.drop(net.load.index, inplace=True)
         
-    # print( net.load )
-    # print(net.res_trafo.iloc[[0,1,2,6,27]] )
-    # print( output_table.iloc[[0,1,2,6,27]]  )
-    # select one for each transformer types
-    return  output_table.iloc[[0,1,2,6,27]]
+    return  output_table_trafo, output_table_line
 
 
 if __name__ == '__main__':
@@ -99,7 +126,7 @@ if __name__ == '__main__':
         
         bus_load = {'Res':  res*k , 'Comm': comm*k, 'Pub': pub*k} #MWh per day
         k*= grow_rate
-        output_table =  loading_assess(bus_load  )
+        output_table =  loading_assess(bus_load)
         
         
         
