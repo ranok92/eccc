@@ -81,7 +81,7 @@ def net_visualize(net_ ):
         # )
     
      
-    plt.show(ax)
+    plt.show()
 
 
 
