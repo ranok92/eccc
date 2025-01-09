@@ -39,26 +39,28 @@ Based on:
 
 '''
 
-#####  Load the data ###### 
+#####  Load  data for LDEV ###### 
 
 # Load profiles for different chargers and locations 
 # load profile of one charger; each charger assumed to serve one ev per day
 
-ev_load = pd.read_excel('./data/EV_load_profiles_gen.xlsx') 
+ev_load = pd.read_excel('./data/ldev_load_data/EV_load_profiles_gen.xlsx') 
 
-pop_growth = pd.read_csv('./data/population_change_diff_areas.csv') #in fraction
+pop_growth = pd.read_csv('./data/ldev_load_data/population_change_diff_areas.csv') #in fraction
 
-penetration_rate = pd.read_csv('./data/penetration_rate_ldev.csv') #in percentage
+penetration_rate = pd.read_csv('./data/ldev_load_data/penetration_rate_ldev.csv') #in percentage
 
-charger_info = pd.read_excel("./data/chargers_for_1000_vehicles.xlsx")
-charger_count_multiplier = pd.read_excel("./data/public_charger_multiplier_by_area.xlsx")
-charger_util_multiplier = pd.read_excel("./data/public_charger_util_multiplier_by_area.xlsx")
+charger_info = pd.read_excel("./data/ldev_load_data/chargers_for_1000_vehicles.xlsx")
+charger_count_multiplier = pd.read_excel("./data/ldev_load_data/public_charger_multiplier_by_area.xlsx")
+charger_util_multiplier = pd.read_excel("./data/ldev_load_data/public_charger_util_multiplier_by_area.xlsx")
 
-pub_charger_util_rate = pd.read_excel("./data/public_charger_utilization_rate.xlsx")
+pub_charger_util_rate = pd.read_excel("./data/ldev_load_data/public_charger_utilization_rate.xlsx")
 
-pop_dist_acc_housing = pd.read_excel("./data/population_distribution_acc_house_types.xlsx") 
+pop_dist_acc_housing = pd.read_excel("./data/ldev_load_data/population_distribution_acc_house_types.xlsx") 
 
 #######     xxx    #######
+
+
 
 area_type = ['suburban']
 
