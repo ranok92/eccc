@@ -75,7 +75,7 @@ hdev_distribution_over_chargers = {'private_l3' : 0.25, 'private_fast': 0.06 , '
 #######     xxx    #######
 
 
-area_type = ['urban']
+area_type = ['suburban']
 
 comm_bus_name_by_area = {'urban':'Pub', 'suburban': 'Indst'}
 
@@ -361,7 +361,7 @@ for area in area_type:
 
 
 
-        mhdev_load_commercial_bus =  (mdev_load_profiles['depot_l3']* \
+        mhdev_load_commercial_bus =  ((mdev_load_profiles['depot_l3']* \
                                     private_l3_chargers_per_bus* \
                                         mdevs_per_private_l3_charger) + \
                                 (hdev_load_profiles['depot_l3']*
@@ -372,7 +372,7 @@ for area in area_type:
                                         mdevs_per_private_fast_charger) + \
                                 (hdev_load_profiles['opp_fast']* \
                                     private_fast_chargers_per_bus* \
-                                        hdevs_per_private_fast_charger) 
+                                        hdevs_per_private_fast_charger)) * 1e-3 
         
         ev_count_dict['mdev_in_comm_zone_charger_tput'] = (private_l3_chargers_per_bus*mdevs_per_private_l3_charger+ \
                                                             private_fast_chargers_per_bus*mdevs_per_private_fast_charger)* \
@@ -425,7 +425,7 @@ for area in area_type:
                                                 mhdev_chargers_nums['public_fast'].item()
 
 
-        mhdev_load_public_bus = (mdev_load_profiles['depot_l3']* \
+        mhdev_load_public_bus = ((mdev_load_profiles['depot_l3']* \
                                     public_l3_chargers_per_bus* \
                                         mdevs_per_public_l3_charger) + \
                                 (hdev_load_profiles['depot_l3']*
@@ -436,7 +436,7 @@ for area in area_type:
                                         mdevs_per_public_fast_charger) + \
                                 (hdev_load_profiles['opp_fast']* \
                                     public_fast_chargers_per_bus* \
-                                        hdevs_per_public_fast_charger) 
+                                        hdevs_per_public_fast_charger))* 1e-3 
 
         ev_count_dict['mdev_in_pub_zone_charger_tput'] = (public_l3_chargers_per_bus*mdevs_per_public_l3_charger+ \
                                                             public_fast_chargers_per_bus*mdevs_per_public_fast_charger)* \
@@ -456,7 +456,7 @@ for area in area_type:
         
         
         mhdev_load_dict[comm_bus_name_by_area[area]] = mhdev_load_public_bus
-
+        #ipdb.set_trace()
         #ev_load_dict[comm_bus_name_by_area[area]] += mhdev_load_public_bus
         # # table 21: res area AC2 : AC1 = 12:3
         # # assume AC2 serve 0.7 ev per day
@@ -485,7 +485,7 @@ for area in area_type:
         ev_load_dict[comm_bus_name_by_area[area]] = ldev_load_dict[comm_bus_name_by_area[area]] + mhdev_load_dict[comm_bus_name_by_area[area]]  
 
         output_table_trafo, output_table_line =  loading_assess(net, area, bus_load ,ev_load_dict)
-        folder = f'./results/ResultsJan10_v7_{area}/'
+        folder = f'./results/ResultsJan10_v8_{area}/'
         os.makedirs(os.path.dirname(folder), exist_ok=True)
 
         pd.DataFrame(ev_count_dict, index=[0]).to_csv(f'{folder}/{year}_ev_numbers.csv')
