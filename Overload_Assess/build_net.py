@@ -197,15 +197,14 @@ def Parameters(network_type):
 
     T_params_rural = {
         "main_substation": {
-            "sn_mva": 20,
-            "vn_hv_kv": 110,
+            "sn_mva":20,
+            "vn_hv_kv": 27.6,
             "vn_lv_kv": 27.6,
             "vk_percent": 10,
             "vkr_percent": 0.5,
             "pfe_kw": 20,
             "i0_percent": 0.1,
             "shift_degree": 30,
-            "vector_group": "Dyg"
         },
 
         "T1": {
@@ -217,7 +216,6 @@ def Parameters(network_type):
             "pfe_kw": 3,
             "i0_percent": 0.1,
             "shift_degree": 0,
-            "vector_group": "Dy"
         },
 
         "T2": {
@@ -229,7 +227,6 @@ def Parameters(network_type):
             "pfe_kw": 10,
             "i0_percent": 0.1,
             "shift_degree": 0,
-            "vector_group": "Yy"
         },
 
         "T3": {
@@ -241,7 +238,6 @@ def Parameters(network_type):
             "pfe_kw": 1,
             "i0_percent": 0.1,
             "shift_degree": 0,
-            "vector_group": "Yy"
 
         },
 
@@ -254,7 +250,6 @@ def Parameters(network_type):
             "pfe_kw": 4,
             "i0_percent": 0.1,
             "shift_degree": 0,
-            "vector_group": "Dy"
 
         }      }
     
@@ -615,7 +610,7 @@ def build_net_rural():
                      ["40ASR427"] + \
                      ["336AL427"]* 3
     #create the buses
-    bus_hv = pp.create_bus(net, vn_kv=100, name="HV")
+    bus_hv = pp.create_bus(net, vn_kv=27.6, name="HV")
     bus_lv_1 = pp.create_bus(net, vn_kv=27.6, name='LV')
 
     #substation network 1
@@ -839,7 +834,7 @@ def build_net_rural():
 
     # bus_25 -> L34 
     line_names_part9 = [34]
-    bus_40 = pp.create_bus(net, vn_kv=27.6, name='bus_39')
+    bus_40 = pp.create_bus(net, vn_kv=27.6, name='bus_40')
     pp.create_line(net, 
                    from_bus=get_bus_index_by_name(net, 'bus_25'),
                    to_bus=bus_40, 
@@ -866,5 +861,5 @@ def build_net_rural():
     return net
     
 if __name__=='__main__':
-    net = build_net_suburban(1,7)
+    net = build_net_rural()
     net_visualize(net)
