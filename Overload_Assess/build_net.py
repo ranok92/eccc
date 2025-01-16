@@ -198,7 +198,7 @@ def Parameters(network_type):
     T_params_rural = {
         "main_substation": {
             "sn_mva":20,
-            "vn_hv_kv": 27.6,
+            "vn_hv_kv": 120,
             "vn_lv_kv": 27.6,
             "vk_percent": 10,
             "vkr_percent": 0.5,
@@ -610,7 +610,7 @@ def build_net_rural():
                      ["40ASR427"] + \
                      ["336AL427"]* 3
     #create the buses
-    bus_hv = pp.create_bus(net, vn_kv=27.6, name="HV")
+    bus_hv = pp.create_bus(net, vn_kv=120, name="HV")
     bus_lv_1 = pp.create_bus(net, vn_kv=27.6, name='LV')
 
     #substation network 1
