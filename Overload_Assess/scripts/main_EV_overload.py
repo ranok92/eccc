@@ -44,7 +44,7 @@ Based on:
 # Load profiles for different chargers and locations 
 # load profile of one charger; each charger assumed to serve one ev per day
 
-ev_load = pd.read_excel('./data/ldev_load_data/EV_load_profiles_gen.xlsx') 
+ev_load = pd.read_excel('./data/ldev_load_data/alternate_charging_scenarios/EV_load_profiles_sc1.xlsx') 
 
 pop_growth = pd.read_csv('./data/ldev_load_data/population_change_diff_areas.csv') #in fraction
 
@@ -75,7 +75,7 @@ hdev_distribution_over_chargers = {'private_l3' : 0.25, 'private_fast': 0.06 , '
 #######     xxx    #######
 
 
-area_type = ['suburban']
+area_type = ['suburban', 'urban']
 
 comm_bus_name_by_area = {'urban':'Pub', 'suburban': 'Indst'}
 
@@ -99,19 +99,29 @@ for area in area_type:
 
     #urban
     if area=='urban':
-        res = 0.73
-        comm= 23
+        # res = 0.73 
+        # comm= 23
+        res = 0.48
+        comm = 20
         pub= 6.8
     else:
         # #suburban
-        res = 0.73
-        comm = 11.65 
-        pub = 16.45  #industrial
+        #res = 0.73
+        res = 0.48
+        #comm = 11.65
+        comm = 15.86
+        pub = 11.07  #industrial
 
+    zonebased_growth_rate = {'Res': 1.011**5, 
+                             'Comm': 1.016**5, 
+                             'Pub': 1.016**5, 
+                             'Indst': 1.008**5}
+    # grow_rate = 1.016**5
+    # k = grow_rate**2
+    zonebased_k = {}
+    for key, val in zonebased_growth_rate.items():
+        zonebased_k[key] = val**2 #to account for the fact that the starting year is 2025
 
-    grow_rate = 1.016**5
-    k=1
-    
 
 
     for year in range(2025, 2055, 5):
@@ -124,9 +134,17 @@ for area in area_type:
 
         # non EV load 
 
-        bus_load = {'Res':  res*k , 'Comm': comm*k, comm_bus_name_by_area[area]: pub*k} #MWh per day
-        k*= grow_rate
-
+        
+        bus_load = {
+                    'Res':  res*zonebased_k['Res'] , 
+                    'Comm': comm*zonebased_k['Comm'], 
+                    comm_bus_name_by_area[area]: pub*zonebased_k[comm_bus_name_by_area[area]]
+                    } #MWh per day
+        
+        #update the growth rate
+        for key in zonebased_k.keys():
+            zonebased_k[key]*=zonebased_growth_rate[key]
+        
         # EV load: LDEV
 
         # residential charging 
@@ -225,14 +243,17 @@ for area in area_type:
         # vehicles distribution over commercial or public charging are calculated 
         # proportional to available chargers 
         # not being used any more 
-        work_chargers = charger_mult*charger_info[charger_info['year']==year]['work_l2'].item()
-        pub_chargers = pub_dc_chargers_per_1000_ev + pub_l2_chargers_per_1000_ev
-        pub_chargers_dc_frac = pub_dc_chargers_per_1000_ev/pub_chargers
+        pub_chargers_per_1000_ev = pub_dc_chargers_per_1000_ev + pub_l2_chargers_per_1000_ev
+        pub_chargers_dc_frac = pub_dc_chargers_per_1000_ev/pub_chargers_per_1000_ev
 
-        ev_per_comm_bus = (total_ev_nonres_charging * (work_chargers/(work_chargers + pub_chargers)))/total_comm_bus
+        ev_per_comm_bus = (total_ev_nonres_charging * \
+                           (work_chargers_per_1000_ev/(work_chargers_per_1000_ev + pub_chargers_per_1000_ev))
+                            )/total_comm_bus
         ev_count_dict['ev_per_comm_bus'] = ev_per_comm_bus
 
-        ev_per_pub_bus = (total_ev_nonres_charging * (pub_chargers/(work_chargers + pub_chargers)))/total_public_bus
+        ev_per_pub_bus = (total_ev_nonres_charging * \
+                          (pub_chargers_per_1000_ev/(work_chargers_per_1000_ev + pub_chargers_per_1000_ev))
+                            )/total_public_bus
         ev_per_pub_bus_dc = ev_per_pub_bus * pub_chargers_dc_frac
         ev_per_pub_bus_l2 = ev_per_pub_bus - ev_per_pub_bus_dc
         ev_count_dict['ev_per_pub_bus_dc'] = ev_per_pub_bus_dc
@@ -241,7 +262,7 @@ for area in area_type:
         # vehicle distribuion across different non residential chargers are calculated based on
         # their utilization rate
 
-        energy_per_charge = 40 #KWh
+        energy_per_charge = ev_load['public_DC'].sum()
         dc_charge_rate = 200
         l2_charge_rate = 20 
 
@@ -258,21 +279,29 @@ for area in area_type:
                                         pub_charger_util_rate_year['charger_type']=='work_l2'
                                                 ]['utilization_percent'].item()
 
-        ev_per_public_dc_charger = (1/energy_per_charge)*dc_charge_rate*(24/100)*public_dc_util_rate
-        ev_per_public_l2_charger = (1/energy_per_charge)*l2_charge_rate*(24/100)*public_l2_util_rate
-        ev_per_work_l2_charger = (1/energy_per_charge)*l2_charge_rate*(24/100)* work_l2_util_rate
+        # (charger_rate/energy_per_charge) * util_hrs * (util_rate(in percent)/100 )
+        util_hrs = 16
+
+        ev_per_public_dc_charger = (1/energy_per_charge)*dc_charge_rate*(util_hrs/100)*public_dc_util_rate
+        ev_per_public_l2_charger = (1/energy_per_charge)*l2_charge_rate*(util_hrs/100)*public_l2_util_rate
+        ev_per_work_l2_charger = (1/energy_per_charge)*l2_charge_rate*(util_hrs/100)* work_l2_util_rate
 
 
-        total_ev_in_pub_charge_from_util_calc = [ev_per_public_dc_charger, 
-                                                 ev_per_public_l2_charger, 
-                                                 ev_per_work_l2_charger]
+        total_ev_in_pub_charge_from_util_calc = [ev_per_public_dc_charger*dc_charger_per_pub_bus, 
+                                                 ev_per_public_l2_charger*l2_charger_per_pub_bus, 
+                                                 ev_per_work_l2_charger*l2_charger_per_comm_bus]
+
+        ev_count_dict['ev_per_public_dc_charger_util'] = ev_per_public_dc_charger
+        ev_count_dict['ev_per_public_l2_charger_util'] = ev_per_public_l2_charger
+        ev_count_dict['ev_per_work_l2_charger_util'] = ev_per_work_l2_charger
 
         total_ev_in_pub_charge_from_numbers = {
-            'public_DC': ev_per_pub_bus_dc/dc_charger_per_pub_bus,
-            'public_AC2': ev_per_pub_bus_l2/l2_charger_per_pub_bus,
-            'work_AC2': ev_per_comm_bus/l2_charger_per_comm_bus
+            'public_DC': ev_per_pub_bus_dc,
+            'public_AC2': ev_per_pub_bus_l2,
+            'work_AC2': ev_per_comm_bus
         }
 
+        print(total_ev_in_pub_charge_from_numbers, total_ev_in_pub_charge_from_util_calc)
         ldev_load_dict={}
         mhdev_load_dict = {}
         ev_load_dict = {}
@@ -470,11 +499,11 @@ for area in area_type:
         # # tab 21: pub area AC2:DC=9:3
         # EV_load['Pub'] = ( EV_load0['public_AC2'] *9/12 +  EV_load0['public_DC'] * 3/12 ) \
         #     *1e-3 *    charger_per_public_bus
-        for key, value in ev_count_dict.items():
-            print(f'{key} : {value}')
+        # for key, value in ev_count_dict.items():
+        #     print(f'{key} : {value}')
         
-        for key, value in charger_count_dict.items():
-            print(f'{key} : {value}')
+        # for key, value in charger_count_dict.items():
+        #     print(f'{key} : {value}')
         
 
         # print(total_ev_in_pub_charge_from_util_calc)
@@ -482,10 +511,11 @@ for area in area_type:
         # #ipdb.set_trace()
         ev_load_dict["Res"] = ldev_load_dict['Res']
         ev_load_dict['Comm'] = ldev_load_dict['Comm'] + mhdev_load_dict['Comm']
-        ev_load_dict[comm_bus_name_by_area[area]] = ldev_load_dict[comm_bus_name_by_area[area]] + mhdev_load_dict[comm_bus_name_by_area[area]]  
+        ev_load_dict[comm_bus_name_by_area[area]] = ldev_load_dict[comm_bus_name_by_area[area]] + \
+                                                mhdev_load_dict[comm_bus_name_by_area[area]]  
 
-        output_table_trafo, output_table_line =  loading_assess(net, area, bus_load ,ev_load_dict)
-        folder = f'./results/ResultsJan10_v8_{area}/'
+        output_table_trafo, output_table_line =  loading_assess(net, area, bus_load, ev_load_dict)
+        folder = f'./results/Results_alternate_sc_1_{area}/'
         os.makedirs(os.path.dirname(folder), exist_ok=True)
 
         pd.DataFrame(ev_count_dict, index=[0]).to_csv(f'{folder}/{year}_ev_numbers.csv')
