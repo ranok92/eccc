@@ -23,7 +23,7 @@ def loading_assess(net, area_type,  bus_load, EV_load=None):
     #%%
     pub_bus_name_by_area = {'urban':'Pub', 'suburban': 'Indst'}
 
-    dt = pd.read_excel('./data/nonEV_norm.xlsx')
+    dt = pd.read_excel('../data/nonEV_norm.xlsx')
     
     load_dt = {}
     
@@ -99,7 +99,7 @@ def loading_assess(net, area_type,  bus_load, EV_load=None):
         #######
 
         try:
-            pp.runpp(net, algorithm='iwamoto_nr',enforce_q_lims=True,  max_iteration=50, tolerance_mva=1e-4,  debug=True)
+            pp.runpp(net,enforce_q_lims=True,  max_iteration=50, tolerance_mva=1e-4,  debug=False)
         except:
             print(f"Power flow failed at iteration {t}. Checking network...")
             print(net.res_bus[['vm_pu']])  # Check bus voltages
