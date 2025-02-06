@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np 
 import math 
 from sklearn.neighbors import KNeighborsClassifier
-
+import json
 #get load for an hour
 def find_closest_non_nan(arr, index):
     """
@@ -43,7 +43,7 @@ def build_hpcapacity_classifier(eccc_data, feature_cols=['HEATEDFLOORAREA' , 'EG
 
     eccc_data : Dataframe containing housing information from ECCC 
     feature_cols: Columns to be used as features. Should be floats.
-    
+
     returns: KNN classifier
     '''
 
@@ -123,8 +123,8 @@ def get_hp_electricity_usage_per_hour(hp_size, cur_temp, cur_heat_req, hp_cop_da
 def calculate_hourly_annual_heating_cooling_requirement_for_house(housing_data_row, 
                                                           base_indoor_temp=20, 
                                                           cooling_trigger_temp=24,
-                                                          weather_filepath='../../data/raw_data/weather/by_FSA/{0}_2023-01-01_2024-01-01.csv',
-                                                          heating_pattern='../../data/formatted_data/heatpump/normalized_24h_heating_pattern.csv'):
+                                                          weather_filepath='../data/raw_data/weather/by_FSA/{0}_2023-01-01_2024-01-01.csv',
+                                                          heating_pattern='../data/formatted_data/heatpump/normalized_24h_heating_pattern.csv'):
     '''
     Given housing information, retrieve yearly temperature and calculate the hourly heating energy
     required by the house
@@ -215,7 +215,7 @@ def get_hourly_electricity_usage_for_house(house_data, hp_cop_data):
 
     #get heatpump size 
     hp_caps_standard = np.arange(1, 5.5, 0.5)
-    house_hp_cap = house_data['HPCAP'].item()/3500 #HPCAP is provided in watts
+    house_hp_cap = house_data['HPCAP']/3500 #HPCAP is provided in watts
     house_hp_size = hp_caps_standard[np.abs(hp_caps_standard - house_hp_cap).argmin()]
     
     total_hours = len(heat_req)
@@ -241,11 +241,30 @@ def get_hourly_electricity_usage_for_house(house_data, hp_cop_data):
 
     house_hr_load = pd.DataFrame()
     house_hr_load['heating_load_KWh'] = hourly_heating_electric_load
+    house_hr_load['heating_load_additional_KJ'] = addl_heat_hourly
+
     house_hr_load['cooling_load_KWh'] = hourly_cooling_electric_load
-    house_hr_load['heating_COP_KJ'] = heating_cop
-    house_hr_load['cooling_COP_KJ'] = cooling_cop 
+    house_hr_load['cooling_load_additional_KJ'] = addl_cool_hourly
+
+    house_hr_load['heating_COP'] = heating_cop
+    house_hr_load['cooling_COP'] = cooling_cop 
+
     house_hr_load['hourly_temp'] = hourly_temp_data
+
     house_hr_load['province'] = house_data['HOUSEREGION']
     house_hr_load['fsa'] = house_data['CLIENTPCODE']
     
     return house_hr_load
+
+if __name__=='__main__':
+    hp_data_file = '../data/raw_data/heatpump/ECCC_2023.csv'
+    data_file = '../data/formatted_data/heatpump/province_yearbuilt_cluster_centers/QC/QC_2011_2015_cluster_centers.csv'
+    heatpump_data_fname = '../data/formatted_data/heatpump/hp_coeff_data_interpolated.json'
+    with open(heatpump_data_fname, 'r') as f:
+        heatpump_coeff_interpolated_data = json.load(f)
+
+    hp_data = pd.read_csv(hp_data_file)
+    row_data = hp_data.iloc[1]
+    #row_data['HPCAP'] = 7000
+    output = get_hourly_electricity_usage_for_house(row_data, heatpump_coeff_interpolated_data)
+    output.to_csv('../results/heatpump_forecast/qc_representative_house_heating_cooling_stats_0.csv')
