@@ -15,6 +15,8 @@ from build_net import build_net_2, build_net_suburban, build_net_rural
 import ipdb
 import glob
 from tqdm import tqdm
+from heatpump_overload_utils import electricity_requirement_for_house_heating_cooling as electric_req
+from heatpump_overload_utils import get_electricity_24h_heating_elctric_demand_area
 # def EV_growth(ev, rate):
 #     out={}
 #     for area , ev in EV_load.items():
@@ -77,6 +79,21 @@ def run_overload(ev_load_profile_file):
 
     #######     xxx    #######
 
+    # heat pump load related data
+
+    housing_ratio = pd.read_csv(
+        '../data/heatpump/representative_houses/ratio_of_housetypes_in_network_across_years.csv')
+    rephouse_data = pd.read_csv(
+        '../data/heatpump/representative_houses/quebec_representative_house_heating_cooling_stats.csv')
+
+    #calculate the 24hr load profile for different kinds of homes 
+    
+    hp_house_with_gas_load_profile = electric_req(rephouse_data, 'hp', 'gas')/1000 #converting to MWh
+    hp_house_with_electric_load_profile = electric_req(rephouse_data, 'hp', 'electric')/1000
+    electric_house_load_profile = electric_req(rephouse_data, 'electric', 'gas')/1000
+
+
+    ##############################
 
     area_type = ['suburban', 'urban']
 
@@ -104,13 +121,16 @@ def run_overload(ev_load_profile_file):
         if area=='urban':
             # res = 0.73 
             # comm= 23
-            res = 0.48
+            # res = 0.48
+            res = 0.22 # without heating
             comm = 20
             pub= 6.8
         else:
             # #suburban
             #res = 0.73
-            res = 0.48
+            #res = 0.48
+            res = 0.22 # without heating
+
             #comm = 11.65
             comm = 15.86
             pub = 11.07  #industrial
@@ -148,7 +168,7 @@ def run_overload(ev_load_profile_file):
             for key in zonebased_k.keys():
                 zonebased_k[key]*=zonebased_growth_rate[key]
             
-            # EV load: LDEV
+            ################# EV load: LDEV ###################
 
             # residential charging 
 
@@ -516,8 +536,56 @@ def run_overload(ev_load_profile_file):
             ev_load_dict['Comm'] = ldev_load_dict['Comm'] + mhdev_load_dict['Comm']
             ev_load_dict[comm_bus_name_by_area[area]] = ldev_load_dict[comm_bus_name_by_area[area]] + \
                                                     mhdev_load_dict[comm_bus_name_by_area[area]]  
+            
+            ################# Heating/Cooling related load ####################
 
-            output_table_trafo, output_table_line =  loading_assess(net, area, bus_load, ev_load_dict)
+            heating_load_dict = {}
+
+            pop_growth_rate = pop_growth_area[
+                                pop_growth_area['year']==year
+                                        ]['rel_pop_change_frac'].item()
+
+            total_houses = household_per_bus*pop_growth_rate     
+            # electric_frac = housing_ratio[housing_ratio['year']==year]['electric'].item()
+            # gas_frac = housing_ratio[housing_ratio['year']==year]['gas'].item()
+            # hp_pen_rate = housing_ratio[housing_ratio['year']==year]['hp'].item()
+
+            # hp_with_electric = hp_house_with_electric_load_profile* \
+            #                                 hp_pen_rate* \
+            #                         (electric_frac/(electric_frac+gas_frac))
+            # hp_with_gas = hp_house_with_gas_load_profile* \
+            #                     hp_pen_rate* \
+            #                         (gas_frac/(electric_frac+gas_frac))
+            # electric_baseboard = electric_house_load_profile*electric_frac
+            # total_heating_load = (hp_with_electric + \
+            #                         hp_with_gas + \
+            #                         electric_baseboard ) * total_houses
+            
+            total_heating_load = get_electricity_24h_heating_elctric_demand_area(
+                                                        rephouse_data,
+                                                    housing_ratio[housing_ratio['year']==year],
+                                                total_houses)
+
+            heating_load_dict['Res'] = total_heating_load
+
+                            ## x x x ##
+            # print('house ratio : ', hp_pen_rate* total_houses, 
+            #                 electric_frac*total_houses, 
+            #                 gas_frac*total_houses)
+
+            # print('Energy from  hp : ', (hp_with_electric.sum()+  hp_with_gas.sum())*total_houses)
+            # print('Energy from electirc :', electric_baseboard.sum()*total_houses)
+
+            # print("Energy per house")
+            # print("HP :", 
+            #       (hp_with_electric.sum() + hp_with_gas.sum())/hp_pen_rate)
+            # print("Electric :", electric_baseboard.sum()/electric_frac)
+            # output_table_trafo, output_table_line =  loading_assess(net, 
+            #                                                         area, 
+            #                                                         bus_load, 
+            #                                                         ev_load_dict, 
+            #                                                         heating_load_dict)
+            
             folder = f'../results/Results_{parent_folder}_{ev_load_fname}_{area}/'
             os.makedirs(os.path.dirname(folder), exist_ok=True)
 
@@ -526,16 +594,21 @@ def run_overload(ev_load_profile_file):
 
             pd.DataFrame(mhdev_load_dict).to_csv(f'{folder}/{year}_mhdev_load.csv')
             pd.DataFrame(ldev_load_dict).to_csv(f'{folder}/{year}_ldev_load.csv')
-            output_table_trafo.to_excel('{}withEV{}_tra.xlsx'.format(folder, year))
-            output_table_line.to_excel('{}withEV{}_line.xlsx'.format(folder, year))
+
+            pd.DataFrame(heating_load_dict).to_csv(f'{folder}/{year}_space_heat_cool_load.csv')
+            # output_table_trafo.to_excel('{}withEV{}_tra.xlsx'.format(folder, year))
+            # output_table_line.to_excel('{}withEV{}_line.xlsx'.format(folder, year))
             
         
 
 if __name__=='__main__':
 
-    base_folder = '../data/ldev_load_data/alternate_charging_scenarios/profiles_v5'
-    ev_load_fnames = glob.glob(f'{base_folder}/EV_load_*.xlsx') 
-    print(ev_load_fnames)
-    for fname in tqdm(ev_load_fnames):
-        print('Starting ', fname)
-        run_overload(fname)
+    # base_folder = '../data/ldev_load_data/alternate_charging_scenarios/profiles_v5'
+    
+    # ev_load_fnames = glob.glob(f'{base_folder}/EV_load_*.xlsx') 
+    # print(ev_load_fnames)
+    # for fname in tqdm(ev_load_fnames):
+    #     print('Starting ', fname)
+    #     run_overload(fname)
+    ev_load_fname = '../data/ldev_load_data/EV_load_profiles_daily_req.xlsx'
+    run_overload(ev_load_fname)
