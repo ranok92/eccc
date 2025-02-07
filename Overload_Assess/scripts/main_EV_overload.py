@@ -15,7 +15,6 @@ from build_net import build_net_2, build_net_suburban, build_net_rural
 import ipdb
 import glob
 from tqdm import tqdm
-from heatpump_overload_utils import electricity_requirement_for_house_heating_cooling as electric_req
 from heatpump_overload_utils import get_electricity_24h_heating_elctric_demand_area
 # def EV_growth(ev, rate):
 #     out={}
@@ -85,12 +84,7 @@ def run_overload(ev_load_profile_file):
         '../data/heatpump/representative_houses/ratio_of_housetypes_in_network_across_years.csv')
     rephouse_data = pd.read_csv(
         '../data/heatpump/representative_houses/quebec_representative_house_heating_cooling_stats.csv')
-
-    #calculate the 24hr load profile for different kinds of homes 
     
-    hp_house_with_gas_load_profile = electric_req(rephouse_data, 'hp', 'gas')/1000 #converting to MWh
-    hp_house_with_electric_load_profile = electric_req(rephouse_data, 'hp', 'electric')/1000
-    electric_house_load_profile = electric_req(rephouse_data, 'electric', 'gas')/1000
 
 
     ##############################
