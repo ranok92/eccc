@@ -71,5 +71,15 @@ def get_electricity_24h_heating_elctric_demand_area(representative_house, housin
     total_heating_load = (hp_with_electric + \
                             hp_with_gas + \
                             electric_baseboard ) * total_houses
-    
+    # print('house ratio : ', hp_pen_rate* total_houses, 
+    #                 electric_frac*total_houses, 
+    #                 gas_frac*total_houses)
+
+    # print('Energy from  hp : ', (hp_with_electric.sum()+  hp_with_gas.sum())*total_houses)
+    # print('Energy from electirc :', electric_baseboard.sum()*total_houses)
+
+    # print("Energy per house")
+    # print("HP :", 
+    #       (hp_with_electric.sum() + hp_with_gas.sum())/hp_pen_rate)
+    # print("Electric :", electric_baseboard.sum()/electric_frac)
     return total_heating_load
