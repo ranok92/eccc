@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def electricity_requirement_for_house_heating_cooling(rephouse_data, primary_heating_type, secondary_heating_type):
+def electricity_requirement_for_house_heating_cooling(rephouse_data, primary_heating_type, secondary_heating_type, top_n=3):
     '''
     Given the annual hourly heating and cooling data of a house, this method calculates the mean 24hr electric load profile 
     of that given house base on the type of heating method used.
@@ -17,21 +17,23 @@ def electricity_requirement_for_house_heating_cooling(rephouse_data, primary_hea
 
     returns a 24hr load profile: array of size 24
     '''
-    
     if primary_heating_type!='hp':
         secondary_heating_type=primary_heating_type
-        
+
+
+    top_n_ind = np.array(rephouse_data['heating_load_KWh']+rephouse_data['cooling_load_KWh']).reshape(-1, 24).sum(axis=1).argpartition(top_n)[-top_n:]
+
     if primary_heating_type=='hp':
         rephouse_data_daily_electric_energy_mean_kwh = np.array(
                             rephouse_data['heating_load_KWh']+rephouse_data['cooling_load_KWh']
-                                    ).reshape(-1, 24).mean(axis=0)
+                                    ).reshape(-1, 24)[top_n_ind, :].mean(axis=0)
         
     elif primary_heating_type=='electric':
         #electric has a COP of 1
         rephouse_data_daily_electric_energy_mean_kwh = (
                 np.array(rephouse_data['heating_load_KWh'])*np.array(rephouse_data['heating_COP']) + \
                 np.array(rephouse_data['cooling_load_KWh'])*np.array(rephouse_data['cooling_COP'])
-                                    ).reshape(-1, 24).mean(axis=0)
+                                    ).reshape(-1, 24)[top_n_ind, :].mean(axis=0)
     else:
         rephouse_data_daily_electric_energy_mean_kwh = np.zeros(24)
     
@@ -39,13 +41,13 @@ def electricity_requirement_for_house_heating_cooling(rephouse_data, primary_hea
     
         rephouse_data_daily_additional_energy_mean_kj = np.array(
                         rephouse_data['heating_load_additional_KJ']+rephouse_data['cooling_load_additional_KJ']
-                            ).reshape(-1, 24).mean(axis=0)
+                            ).reshape(-1, 24)[top_n_ind, :].mean(axis=0)
         rephouse_data_daily_additional_energy_mean_kwh = rephouse_data_daily_additional_energy_mean_kj/3600
         
     else:
         rephouse_data_daily_additional_energy_mean_kwh = np.zeros(24)
     
-    return rephouse_data_daily_electric_energy_mean_kwh+rephouse_data_daily_additional_energy_mean_kwh
+    return rephouse_data_daily_electric_energy_mean_kwh + rephouse_data_daily_additional_energy_mean_kwh
 
 
 
