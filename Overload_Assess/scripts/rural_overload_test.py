@@ -14,10 +14,12 @@ import os
 import numpy as np
 import glob
 from copy import deepcopy
+from heatpump_overload_utils import get_electricity_24h_heating_elctric_demand_area
+
 import ipdb 
 
 
-def loading_assess_rural(net, nonEV_info , EV_load = None):
+def loading_assess_rural(net, nonEV_info , EV_load = None, heating_load=None):
     '''
     nonEV_info = pandas.df with cols of 
                     bus name, energy use per day
@@ -25,12 +27,17 @@ def loading_assess_rural(net, nonEV_info , EV_load = None):
     EV_load = {'bus_3':  EV_load_of_bus_3,
                'bus_5': EV_load_of_bus_5,
               ...}
+    heating_load = {
+                    'bus_3': Heating_load_of_bus_3,
+                    'bus_5': Heating_load_of_bus_5. 
+                    ...
+                    }
     
     '''
     
     dt = pd.read_excel('../data/nonEV_norm.xlsx')
     
-    normalized_res_profile = dt['residential']
+    normalized_res_profile = dt['residential_wo_heating']
     
     
     #  
@@ -66,7 +73,8 @@ def loading_assess_rural(net, nonEV_info , EV_load = None):
             
             if EV_load is not None:
                 load_  += EV_load[bus_name][t]
-            
+            if heating_load is not None:
+                load_ +=heating_load[bus_name][t]
         
             pp.create_load(net,  bus_idx ,
                             p_mw = load_ )
@@ -98,7 +106,15 @@ if __name__=='__main__':
     rural_info = pd.read_excel('../data/rural_net_household_distribution.xlsx' ).iloc[:,[0,2]]
     ldev_penetration_rate = pd.read_csv('../data/ldev_load_data/penetration_rate_ldev.csv') #in percentage
     charger_info = pd.read_excel("../data/ldev_load_data/chargers_for_1000_vehicles.xlsx")
+    pop_growth = pd.read_csv('../data/ldev_load_data/population_change_diff_areas.csv') #in fraction
 
+    # heat pump related data
+    
+    housing_ratio = pd.read_csv(
+        '../data/heatpump/representative_houses/ratio_of_housetypes_in_network_across_years.csv')
+    rephouse_data = pd.read_csv(
+        '../data/heatpump/representative_houses/quebec_representative_house_heating_cooling_stats.csv')
+    
     # adding multiple EV load pattern files
     base_folder_ev_charging_pattern = '../data/ldev_load_data/alternate_charging_scenarios/profiles_v5'
 
@@ -107,7 +123,7 @@ if __name__=='__main__':
 
     rural_grouped = rural_info .groupby('Bus', as_index=False).sum()    
     # rural_grouped.iloc[:,1] = rural_grouped.iloc[:,1].astype('float64')
-    
+    pop_growth_area = pop_growth[pop_growth['area']=='rural']
 
     for ev_load_profile_file in ev_load_profile_files:
         ev_load = pd.read_excel(ev_load_profile_file)
@@ -122,7 +138,13 @@ if __name__=='__main__':
         for year in range(2025, 2055,5):
 
             print('running the year of {}'.format(year))
-            E_daily_energy = 30*1e-3 *k   # daily energy of a household  [MWh]
+            
+            pop_growth_rate = pop_growth_area[
+                                pop_growth_area['year']==year
+                                        ]['rel_pop_change_frac'].item()
+            # A multiplication factor of (0.22/0.48) is applied to only account for 
+            # non heating related usage.
+            E_daily_energy = 30*1e-3 * (0.22/0.48) *k   # daily energy of a household  [MWh]
             k*= grow_rate
             
             net = build_net_rural ()
@@ -132,12 +154,15 @@ if __name__=='__main__':
             nonEV_info = deepcopy(rural_grouped)
             nonEV_info.iloc[:,1] *= E_daily_energy 
             nonEV_info = nonEV_info.rename(columns={'NumOfHouse':'E_per_day'})
-            #adding EV load 
             ev_load_dict = {}
+            heating_load_dict = {}
             total_evs = 0
             total_load_l1 = total_load_l2 = np.zeros(24)
             for bus_info in rural_grouped.itertuples():
-                num_houses = bus_info.NumOfHouse 
+                
+                num_houses = bus_info.NumOfHouse*pop_growth_rate
+                
+                #adding EV load 
                 pen_rate = ldev_penetration_rate[
                                     ldev_penetration_rate['year']==year
                                         ]['penetration_rate'].item()*1e-2
@@ -151,7 +176,15 @@ if __name__=='__main__':
                 l2_load = (ev_load['home_AC2']*evs*(1-l1_l2_ratio))*(1e-3)
                 ev_load_dict[f'bus_{bus_info.Bus}'] = l1_load+l2_load 
                 total_load_l1 += l1_load
-                total_load_l2 += l2_load    
+                total_load_l2 += l2_load   
+
+                # adding heating load 
+                total_heating_load = get_electricity_24h_heating_elctric_demand_area(
+                                                rephouse_data,
+                                            housing_ratio[housing_ratio['year']==year],
+                                        num_houses)
+                heating_load_dict[f'bus_{bus_info.Bus}'] = total_heating_load
+                 
 
             data_dict[year] = {'num_evs': total_evs, 
                             'pen_rate': pen_rate, 
@@ -162,13 +195,15 @@ if __name__=='__main__':
             print(f"Num EVs: {total_evs} \n Penetration rate: {pen_rate} \n total load l1: {total_load_l1} \n total load l2: {total_load_l2} ")
             output_table_tra,  output_table_line= loading_assess_rural(net, 
                                                                     nonEV_info, 
-                                                                    ev_load_dict ) 
+                                                                    ev_load_dict, 
+                                                                    heating_load_dict) 
 
 
             folder = f'../results/Results_{parent_folder}_{ev_load_fname}_rural/'
             os.makedirs(os.path.dirname(folder), exist_ok=True)
             os.makedirs(os.path.dirname(folder), exist_ok=True)
             pd.DataFrame(ev_load_dict).to_csv(f'{folder}/{year}_ldev_load.csv')
+            pd.DataFrame(heating_load_dict).to_csv(f'{folder}/{year}_space_heat_cool_load.csv')
             pd.DataFrame(data_dict).to_excel('{}evinfo.xlsx'.format(folder, year))
             output_table_tra.to_excel('{}EV{}_tra.xlsx'.format(folder, year))
             output_table_line.to_excel('{}EV{}_line.xlsx'.format(folder, year))
