@@ -546,21 +546,6 @@ def run_overload(ev_load_profile_file):
                                         ]['rel_pop_change_frac'].item()
 
             total_houses = household_per_bus*pop_growth_rate     
-            # electric_frac = housing_ratio[housing_ratio['year']==year]['electric'].item()
-            # gas_frac = housing_ratio[housing_ratio['year']==year]['gas'].item()
-            # hp_pen_rate = housing_ratio[housing_ratio['year']==year]['hp'].item()
-
-            # hp_with_electric = hp_house_with_electric_load_profile* \
-            #                                 hp_pen_rate* \
-            #                         (electric_frac/(electric_frac+gas_frac))
-            # hp_with_gas = hp_house_with_gas_load_profile* \
-            #                     hp_pen_rate* \
-            #                         (gas_frac/(electric_frac+gas_frac))
-            # electric_baseboard = electric_house_load_profile*electric_frac
-            # total_heating_load = (hp_with_electric + \
-            #                         hp_with_gas + \
-            #                         electric_baseboard ) * total_houses
-            
             total_heating_load = get_electricity_24h_heating_elctric_demand_area(
                                                         rephouse_data,
                                                     housing_ratio[housing_ratio['year']==year],
@@ -569,22 +554,12 @@ def run_overload(ev_load_profile_file):
             heating_load_dict['Res'] = total_heating_load
 
                             ## x x x ##
-            # print('house ratio : ', hp_pen_rate* total_houses, 
-            #                 electric_frac*total_houses, 
-            #                 gas_frac*total_houses)
-
-            # print('Energy from  hp : ', (hp_with_electric.sum()+  hp_with_gas.sum())*total_houses)
-            # print('Energy from electirc :', electric_baseboard.sum()*total_houses)
-
-            # print("Energy per house")
-            # print("HP :", 
-            #       (hp_with_electric.sum() + hp_with_gas.sum())/hp_pen_rate)
-            # print("Electric :", electric_baseboard.sum()/electric_frac)
-            # output_table_trafo, output_table_line =  loading_assess(net, 
-            #                                                         area, 
-            #                                                         bus_load, 
-            #                                                         ev_load_dict, 
-            #                                                         heating_load_dict)
+ 
+            output_table_trafo, output_table_line =  loading_assess(net, 
+                                                                    area, 
+                                                                    bus_load, 
+                                                                    ev_load_dict, 
+                                                                    heating_load_dict)
             
             folder = f'../results/Results_{parent_folder}_{ev_load_fname}_{area}/'
             os.makedirs(os.path.dirname(folder), exist_ok=True)
@@ -596,8 +571,8 @@ def run_overload(ev_load_profile_file):
             pd.DataFrame(ldev_load_dict).to_csv(f'{folder}/{year}_ldev_load.csv')
 
             pd.DataFrame(heating_load_dict).to_csv(f'{folder}/{year}_space_heat_cool_load.csv')
-            # output_table_trafo.to_excel('{}withEV{}_tra.xlsx'.format(folder, year))
-            # output_table_line.to_excel('{}withEV{}_line.xlsx'.format(folder, year))
+            output_table_trafo.to_excel('{}withEV{}_tra.xlsx'.format(folder, year))
+            output_table_line.to_excel('{}withEV{}_line.xlsx'.format(folder, year))
             
         
 
