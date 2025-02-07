@@ -13,8 +13,21 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import os
 
-def loading_assess(net, area_type,  bus_load, EV_load=None):
-    
+def loading_assess(net, area_type,  bus_load, EV_load=None, heating_load=None):
+    '''
+    Input:
+        net: Network built using pandapower 
+        bus_load: Dictionary {
+                    <area> : load_multiplier (float)
+                    }
+                <area> : {'Res' , 'Comm', 'Pub', 'Indst'}
+        EV_load: Dictionary {
+                    <area> :  24hr load profile (24 dim array)
+                    }
+        HP_load: Dictionary {
+                    <area>: 2hhr load profile (24dim array)
+                    }
+    '''
 
     # net = build_net  ()
     # net = build_net_2  ()
@@ -23,7 +36,7 @@ def loading_assess(net, area_type,  bus_load, EV_load=None):
     #%%
     pub_bus_name_by_area = {'urban':'Pub', 'suburban': 'Indst'}
 
-    dt = pd.read_excel('../data/nonEV_norm.xlsx')
+    dt = pd.read_excel('../data/nonEV_norm_without_heating.xlsx')
     
     load_dt = {}
     
@@ -32,7 +45,7 @@ def loading_assess(net, area_type,  bus_load, EV_load=None):
     E_house_perday =  bus_load['Res']
     # 0.48
      # 35 1e-3 * 15# unit: mwh
-    load_res_per_bus = dt['residential']  * E_house_perday
+    load_res_per_bus = dt['residential_wo_heating']  * E_house_perday
     idx = net.bus.index[ net.bus['zone'] =='Res']
     load_dt['Res'] = {'load':load_res_per_bus, 'bus':idx}
     
@@ -62,6 +75,10 @@ def loading_assess(net, area_type,  bus_load, EV_load=None):
         for area , ev in EV_load.items():
             load_dt[area]['load'] +=  ev 
     
+    if heating_load is not None:
+        for area, load in heating_load.items():
+            load_dt[area]['load'] += load 
+            
     #  
     time_stamp = dt['time']
     
