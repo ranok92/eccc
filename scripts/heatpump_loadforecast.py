@@ -51,7 +51,7 @@ def main():
     house_type_list = groupwise_penetration_rate_forecast['house_type'].unique()
     year_list = groupwise_penetration_rate_forecast['forecast_year'].unique()
     electic_load_canada_forecast_df = pd.DataFrame()
-    for province in ['territories']:
+    for province in province_list:
         province_df = pd.DataFrame(columns=['province', 
                                             'forecast_year', 
                                             'total_electric_energy_MWh' , 
@@ -165,7 +165,7 @@ def main():
         if province_df['total_electric_energy_MWh'].sum()>0:
             electic_load_canada_forecast_df = pd.concat((electic_load_canada_forecast_df, province_df), axis=0)
          
-    electic_load_canada_forecast_df.to_csv(f'{save_folder}/electric_energy_n_load_profile_forecast_hp_nonzero_cluster_territories.csv')
+    electic_load_canada_forecast_df.to_csv(f'{save_folder}/electric_energy_n_load_profile_forecast_hp_fixed_penrate.csv')
 
 
 if __name__=='__main__':
