@@ -60,13 +60,15 @@ def get_electricity_24h_heating_elctric_demand_area(representative_house, housin
     electric_frac = housing_ratio['electric'].item()
     gas_frac = housing_ratio['gas'].item()
     hp_pen_rate = housing_ratio['hp'].item()
+    hp_from_gas = housing_ratio['hp_from_gas'].item()
+    hp_from_electric = housing_ratio['hp_from_electric'].item()
 
     hp_with_electric = hp_house_with_electric_load_profile* \
-                                    hp_pen_rate* \
-                            (electric_frac/(electric_frac+gas_frac))
+                                hp_pen_rate * hp_from_electric
+                            
     hp_with_gas = hp_house_with_gas_load_profile* \
-                        hp_pen_rate* \
-                            (gas_frac/(electric_frac+gas_frac))
+                        hp_pen_rate * hp_from_gas
+                           
     electric_baseboard = electric_house_load_profile*electric_frac
     total_heating_load = (hp_with_electric + \
                             hp_with_gas + \
