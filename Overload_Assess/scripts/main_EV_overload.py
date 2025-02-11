@@ -45,7 +45,7 @@ Based on:
 # Load profiles for different chargers and locations 
 # load profile of one charger; each charger assumed to serve one ev per day
 
-def run_overload(ev_load_profile_file):
+def run_overload(ev_load_profile_file, include_hp=True):
     ev_load = pd.read_excel(ev_load_profile_file) 
 
     parent_folder = ev_load_profile_file.split('/')[-2]
@@ -116,14 +116,24 @@ def run_overload(ev_load_profile_file):
             # res = 0.73 
             # comm= 23
             # res = 0.48
-            res = 0.22 # without heating
+
+            if include_hp:
+                res = 0.25 # without heating
+            else:
+                res = 0.66 # to get 0.73 in 2025
             comm = 20
             pub= 6.8
         else:
             # #suburban
             #res = 0.73
             #res = 0.48
-            res = 0.22 # without heating
+            
+            if include_hp:
+                res = 0.25 # without heating
+            else:
+                res = 0.66 # to get 0.73 in 2025
+
+            #res = 0.25 # without heating
 
             #comm = 11.65
             comm = 15.86
@@ -533,19 +543,22 @@ def run_overload(ev_load_profile_file):
             
             ################# Heating/Cooling related load ####################
 
-            heating_load_dict = {}
+            if include_hp:
+                heating_load_dict = {}
 
-            pop_growth_rate = pop_growth_area[
-                                pop_growth_area['year']==year
-                                        ]['rel_pop_change_frac'].item()
+                pop_growth_rate = pop_growth_area[
+                                    pop_growth_area['year']==year
+                                            ]['rel_pop_change_frac'].item()
 
-            total_houses = household_per_bus*pop_growth_rate     
-            total_heating_load = get_electricity_24h_heating_elctric_demand_area(
-                                                        rephouse_data,
-                                                    housing_ratio[housing_ratio['year']==year],
-                                                total_houses)
+                total_houses = household_per_bus*pop_growth_rate     
+                total_heating_load = get_electricity_24h_heating_elctric_demand_area(
+                                                            rephouse_data,
+                                                        housing_ratio[housing_ratio['year']==year],
+                                                    total_houses)
 
-            heating_load_dict['Res'] = total_heating_load
+                heating_load_dict['Res'] = total_heating_load
+            else:
+                heating_load_dict = None
 
                             ## x x x ##
  
@@ -555,7 +568,8 @@ def run_overload(ev_load_profile_file):
                                                                     ev_load_dict, 
                                                                     heating_load_dict)
             
-            folder = f'../results/Results_{parent_folder}_{ev_load_fname}_{area}/'
+            
+            folder = f'../results_new_wo_hp/Results_{parent_folder}_{ev_load_fname}_{area}/'
             os.makedirs(os.path.dirname(folder), exist_ok=True)
 
             pd.DataFrame(ev_count_dict, index=[0]).to_csv(f'{folder}/{year}_ev_numbers.csv')
@@ -579,5 +593,6 @@ if __name__=='__main__':
     # for fname in tqdm(ev_load_fnames):
     #     print('Starting ', fname)
     #     run_overload(fname)
+
     ev_load_fname = '../data/ldev_load_data/EV_load_profiles_daily_req.xlsx'
     run_overload(ev_load_fname)
