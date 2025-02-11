@@ -45,7 +45,11 @@ def loading_assess(net, area_type,  bus_load, EV_load=None, heating_load=None):
     E_house_perday =  bus_load['Res']
     # 0.48
      # 35 1e-3 * 15# unit: mwh
-    load_res_per_bus = dt['residential_wo_heating']  * E_house_perday
+    if heating_load is not None:
+        load_res_per_bus = dt['residential_wo_heating']  * E_house_perday
+    else:
+        load_res_per_bus = dt['residential']  * E_house_perday
+
     idx = net.bus.index[ net.bus['zone'] =='Res']
     load_dt['Res'] = {'load':load_res_per_bus, 'bus':idx}
     
