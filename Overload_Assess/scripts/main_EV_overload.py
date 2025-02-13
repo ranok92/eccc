@@ -45,7 +45,7 @@ Based on:
 # Load profiles for different chargers and locations 
 # load profile of one charger; each charger assumed to serve one ev per day
 
-def run_overload(ev_load_profile_file, include_hp=True):
+def run_overload(ev_load_profile_file, include_ev=True, include_hp=True):
     ev_load = pd.read_excel(ev_load_profile_file) 
 
     parent_folder = ev_load_profile_file.split('/')[-2]
@@ -83,7 +83,7 @@ def run_overload(ev_load_profile_file, include_hp=True):
     housing_ratio = pd.read_csv(
         '../data/heatpump/representative_houses/ratio_of_housetypes_in_network_across_years.csv')
     rephouse_data = pd.read_csv(
-        '../data/heatpump/representative_houses/quebec_representative_house_heating_cooling_stats.csv')
+        '../data/heatpump/representative_houses/canada_mean_representative_house_heating_cooling_stats.csv')
     
 
 
@@ -122,12 +122,12 @@ def run_overload(ev_load_profile_file, include_hp=True):
             else:
                 res = 0.66 # to get 0.73 in 2025
             comm = 20
-            pub= 6.8
+            pub = 6.8
         else:
             # #suburban
             #res = 0.73
             #res = 0.48
-            
+
             if include_hp:
                 res = 0.25 # without heating
             else:
@@ -536,11 +536,14 @@ def run_overload(ev_load_profile_file, include_hp=True):
             # print(total_ev_in_pub_charge_from_util_calc)
             # print(total_ev_in_pub_charge_from_numbers)
             # #ipdb.set_trace()
-            ev_load_dict["Res"] = ldev_load_dict['Res']
-            ev_load_dict['Comm'] = ldev_load_dict['Comm'] + mhdev_load_dict['Comm']
-            ev_load_dict[comm_bus_name_by_area[area]] = ldev_load_dict[comm_bus_name_by_area[area]] + \
-                                                    mhdev_load_dict[comm_bus_name_by_area[area]]  
-            
+
+            if include_ev:
+                ev_load_dict["Res"] = ldev_load_dict['Res']
+                ev_load_dict['Comm'] = ldev_load_dict['Comm'] + mhdev_load_dict['Comm']
+                ev_load_dict[comm_bus_name_by_area[area]] = ldev_load_dict[comm_bus_name_by_area[area]] + \
+                                                        mhdev_load_dict[comm_bus_name_by_area[area]]  
+            else:
+                ev_load_dict = None
             ################# Heating/Cooling related load ####################
 
             if include_hp:
@@ -569,7 +572,7 @@ def run_overload(ev_load_profile_file, include_hp=True):
                                                                     heating_load_dict)
             
             
-            folder = f'../results_new_wo_hp/Results_{parent_folder}_{ev_load_fname}_{area}/'
+            folder = f'../results_new_all_inc/Results_{parent_folder}_{ev_load_fname}_{area}/'
             os.makedirs(os.path.dirname(folder), exist_ok=True)
 
             pd.DataFrame(ev_count_dict, index=[0]).to_csv(f'{folder}/{year}_ev_numbers.csv')
@@ -595,4 +598,4 @@ if __name__=='__main__':
     #     run_overload(fname)
 
     ev_load_fname = '../data/ldev_load_data/EV_load_profiles_daily_req.xlsx'
-    run_overload(ev_load_fname)
+    run_overload(ev_load_fname, include_hp=True, include_ev=True)
