@@ -3,6 +3,9 @@ import numpy as np
 import math 
 from sklearn.neighbors import KNeighborsClassifier
 import json
+import glob
+import pickle 
+
 #get load for an hour
 def find_closest_non_nan(arr, index):
     """
@@ -104,6 +107,7 @@ def get_hp_electricity_usage_per_hour(hp_size, cur_temp, cur_heat_req, hp_cop_da
     #due to the quirks of the interpolation some edge values are Nan
     #the loop below makes sure if a value is selected from the nan region
     #then it would select the closest non nan value for that given temperature
+
     cap_indx = math.floor((cur_load_frac - min_cap)/(max_cap - min_cap)*(len(cur_hp_info['COP_data'])-1))
     cur_cop = cur_hp_info['COP_data'][cap_indx][temp_indx]
     
@@ -228,13 +232,13 @@ def get_hourly_electricity_usage_for_house(house_data, hp_cop_data):
     for t in range(total_hours):
         cur_temp = hourly_temp_data[t]
         if heat_req[t] > 0:
-            elec_use, cur_cop,  addl_heat_req = get_hp_electricity_usage_per_hour(house_hp_size, cur_temp, heat_req[t], hp_cop_data)
+            elec_use, cur_cop,  addl_heat_req = get_hp_electricity_usage_per_hour(house_hp_size, cur_temp, heat_req[t].item(), hp_cop_data)
             heating_cop[t] = cur_cop
             addl_heat_hourly[t] = addl_heat_req
             hourly_heating_electric_load[t] = elec_use
             
         if cool_req[t] > 0:
-            elec_use, cur_cop,  addl_cool_req = get_hp_electricity_usage_per_hour(house_hp_size, cur_temp, cool_req[t], hp_cop_data)
+            elec_use, cur_cop,  addl_cool_req = get_hp_electricity_usage_per_hour(house_hp_size, cur_temp, cool_req[t].item(), hp_cop_data)
             cooling_cop[t] = cur_cop
             addl_cool_hourly[t] = addl_cool_req
             hourly_cooling_electric_load[t] = elec_use
@@ -257,14 +261,47 @@ def get_hourly_electricity_usage_for_house(house_data, hp_cop_data):
     return house_hr_load
 
 if __name__=='__main__':
-    hp_data_file = '../data/raw_data/heatpump/ECCC_2023.csv'
+    #hp_data_file = '../data/raw_data/heatpump/ECCC_2023.csv'
     data_file = '../data/formatted_data/heatpump/province_yearbuilt_cluster_centers/QC/QC_2011_2015_cluster_centers.csv'
+
+    cluster_center_base_folder = '../data/formatted_data/heatpump/province_yearbuilt_cluster_centers'
     heatpump_data_fname = '../data/formatted_data/heatpump/hp_coeff_data_interpolated.json'
+
+    hp_size_classifier = pickle.load(open('../data/raw_data/heatpump/KNN_HPSIZE_classifier', 'rb'))
+    classifier_feature_cols = ['HEATEDFLOORAREA' , 'EGHSPACEENERGY']
+
+    cluster_center_filenames = glob.glob(f'{cluster_center_base_folder}/*/*.csv')
+
     with open(heatpump_data_fname, 'r') as f:
         heatpump_coeff_interpolated_data = json.load(f)
 
-    hp_data = pd.read_csv(hp_data_file)
-    row_data = hp_data.iloc[1]
-    #row_data['HPCAP'] = 7000
-    output = get_hourly_electricity_usage_for_house(row_data, heatpump_coeff_interpolated_data)
-    output.to_csv('../results/heatpump_forecast/qc_representative_house_heating_cooling_stats_0.csv')
+    rel_output_data_cols = ['heating_load_KWh', 
+                         'heating_load_additional_KJ',
+                         'cooling_load_KWh',
+                         'cooling_load_additional_KJ', 	
+                         'heating_COP',  	
+                         'cooling_COP', 	
+                         'hourly_temp']
+    mean_data = np.zeros((8784, 7))
+
+    for cc_fname in cluster_center_filenames:
+        hp_data = pd.read_csv(cc_fname)
+        #find the cluster with the biggest size 
+        idx = hp_data['Cluster Proportion'].argmax()
+
+        row_data = hp_data.iloc[idx]
+        
+        if row_data['HPSOURCE']=='N/A {no Heat Pump}':
+            row_data['HPCAP'] = hp_size_classifier.predict(
+                            np.array(row_data[classifier_feature_cols]).reshape(1, 2)
+                                ) * 3500 # convert from ton to watts Classifier predicts in Tons
+        #row_data['HPCAP'] = 7000
+        output = get_hourly_electricity_usage_for_house(row_data, heatpump_coeff_interpolated_data)
+        mean_data += np.array(output[rel_output_data_cols])
+    
+    mean_data/=len(cluster_center_filenames)
+    for i in range(len(rel_output_data_cols)):
+        output[rel_output_data_cols[i]] = mean_data[:, i]
+
+    output =  output.drop(columns='fsa')  
+    output.to_csv('../results/heatpump_forecast/canada_mean_representative_house_heating_cooling_stats.csv')
