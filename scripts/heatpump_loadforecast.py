@@ -5,6 +5,7 @@ from heatpump_utils import *
 import pickle
 #read the penetration rates for each group
 import ipdb
+from tqdm import tqdm
 
 def main():
     # eccc_db_fname = '../../data/raw_data/heatpump/ECCC_2023.csv'
@@ -24,6 +25,7 @@ def main():
     hp_size_classifier = pickle.load(open(hpsize_classifier_fname, 'rb'))
     pop_growth = pd.read_csv(pop_growth_fname)
 
+    top_n = 5 #top n days to consider to calculate max load
 
     #all the areas 'urban', 'suburban' and 'rural' have the same growth rate
     pop_growth= pop_growth[pop_growth['area']=='urban']
@@ -51,7 +53,7 @@ def main():
     house_type_list = groupwise_penetration_rate_forecast['house_type'].unique()
     year_list = groupwise_penetration_rate_forecast['forecast_year'].unique()
     electic_load_canada_forecast_df = pd.DataFrame()
-    for province in province_list:
+    for province in tqdm(province_list):
         province_df = pd.DataFrame(columns=['province', 
                                             'forecast_year', 
                                             'total_electric_energy_MWh' , 
@@ -146,9 +148,9 @@ def main():
                                                                 addl_cool_load_mwh)  #array of size 8760
                             
                             load_profile_24hr_mean = total_hourly_annual_electric_load.reshape(-1, 24).mean(axis=0)
-                            max_load_day = total_hourly_annual_electric_load.reshape(-1, 24).mean(axis=1).argmax()
+                            top_n_ind = total_hourly_annual_electric_load.reshape(-1, 24).sum(axis=1).argpartition(top_n)[-top_n:]
                             #print(max_load_day)
-                            load_profile_24hr_max = total_hourly_annual_electric_load[max_load_day*24: (max_load_day+1)*24]
+                            load_profile_24hr_max = total_hourly_annual_electric_load.reshape(-1, 24)[top_n_ind, :].mean(axis=0)
 
                             provincial_yearly_dict[forecast_year]['total_electric_energy_MWh'] +=total_hourly_annual_electric_load.sum().astype(float)
 
