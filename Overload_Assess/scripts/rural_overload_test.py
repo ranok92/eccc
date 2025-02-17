@@ -105,7 +105,7 @@ def run_rural_overload_assessment(ev_load_profile_file, include_hp=True):
             
     parent_folder = ev_load_profile_file.split('/')[-2]
     ev_load_fname = ev_load_profile_file.split('/')[-1].split('.')[0]
-    grow_rate = 1.018**5
+    grow_rate = 1.011**5 # updated
     # fig = plt.figure(figsize=(10,15))
     k=grow_rate**2
     data_dict = {}
@@ -187,7 +187,7 @@ def run_rural_overload_assessment(ev_load_profile_file, include_hp=True):
                                                                 heating_load_dict) 
 
 
-        folder = f'../results_new_wo_hp/Results_{parent_folder}_{ev_load_fname}_rural/'
+        folder = f'../results_new_non_hp/Results_{parent_folder}_{ev_load_fname}_rural/'
         os.makedirs(os.path.dirname(folder), exist_ok=True)
         os.makedirs(os.path.dirname(folder), exist_ok=True)
         pd.DataFrame(ev_load_dict).to_csv(f'{folder}/{year}_ldev_load.csv')
