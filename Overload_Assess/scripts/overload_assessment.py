@@ -36,7 +36,7 @@ def loading_assess(net, area_type,  bus_load, EV_load=None, heating_load=None):
     #%%
     pub_bus_name_by_area = {'urban':'Pub', 'suburban': 'Indst'}
 
-    dt = pd.read_excel('../data/nonEV_norm_without_heating.xlsx')
+    dt = pd.read_csv('../data/nonEV_norm_without_heating.csv')
     
     load_dt = {}
     
